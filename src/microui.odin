@@ -45,8 +45,8 @@ MU_SLIDER_FMT           :: "%.2f";
 MU_MAX_FMT              :: 127;
 
 Stack :: struct(T: typeid, N: i32) {
-  idx:   i32,
-  items: [N] T,
+	idx:   i32,
+	items: [N] T,
 }
 
 // TODO(oskar): remove this, just use the builtins directly
@@ -55,79 +55,79 @@ mu_max   :: builtin.max;
 mu_clamp :: builtin.clamp;
 
 Clip :: enum {
-  NONE,
-  PART,
-  ALL
+	NONE,
+	PART,
+	ALL
 }
 
 Command_Type :: enum {
-  JUMP = 1,
-  CLIP,
-  RECT,
-  TEXT,
-  ICON,
-  MAX
+	JUMP = 1,
+	CLIP,
+	RECT,
+	TEXT,
+	ICON,
+	MAX
 }
 
 Color_Type :: enum {
-  TEXT,
-  BORDER,
-  WINDOWBG,
-  TITLEBG,
-  TITLETEXT,
-  PANELBG,
-  BUTTON,
-  BUTTONHOVER,
-  BUTTONFOCUS,
-  BASE,
-  BASEHOVER,
-  BASEFOCUS,
-  SCROLLBASE,
-  SCROLLTHUMB,
-  MAX
+	TEXT,
+	BORDER,
+	WINDOWBG,
+	TITLEBG,
+	TITLETEXT,
+	PANELBG,
+	BUTTON,
+	BUTTONHOVER,
+	BUTTONFOCUS,
+	BASE,
+	BASEHOVER,
+	BASEFOCUS,
+	SCROLLBASE,
+	SCROLLTHUMB,
+	MAX
 }
 
 Icon :: enum {
-  CLOSE = 1,
-  CHECK,
-  COLLAPSED,
-  EXPANDED,
-  MAX
+	CLOSE = 1,
+	CHECK,
+	COLLAPSED,
+	EXPANDED,
+	MAX
 }
 
 Res :: enum {
-  ACTIVE = (1 << 0),
-  SUBMIT = (1 << 1),
-  CHANGE = (1 << 2)
+	ACTIVE = (1 << 0),
+	SUBMIT = (1 << 1),
+	CHANGE = (1 << 2)
 }
 
 Opt :: enum {
-  ALIGNCENTER  = (1 << 0),
-  ALIGNRIGHT   = (1 << 1),
-  NOINTERACT   = (1 << 2),
-  NOFRAME      = (1 << 3),
-  NORESIZE     = (1 << 4),
-  NOSCROLL     = (1 << 5),
-  NOCLOSE      = (1 << 6),
-  NOTITLE      = (1 << 7),
-  HOLDFOCUS    = (1 << 8),
-  AUTOSIZE     = (1 << 9),
-  POPUP        = (1 << 10),
-  CLOSED       = (1 << 11)
+	ALIGNCENTER  = (1 << 0),
+	ALIGNRIGHT   = (1 << 1),
+	NOINTERACT   = (1 << 2),
+	NOFRAME      = (1 << 3),
+	NORESIZE     = (1 << 4),
+	NOSCROLL     = (1 << 5),
+	NOCLOSE      = (1 << 6),
+	NOTITLE      = (1 << 7),
+	HOLDFOCUS    = (1 << 8),
+	AUTOSIZE     = (1 << 9),
+	POPUP        = (1 << 10),
+	CLOSED       = (1 << 11)
 }
 
 Mouse :: enum {
-  LEFT       = (1 << 0),
-  RIGHT      = (1 << 1),
-  MIDDLE     = (1 << 2)
+	LEFT       = (1 << 0),
+	RIGHT      = (1 << 1),
+	MIDDLE     = (1 << 2)
 }
 
 Key :: enum {
-  SHIFT        = (1 << 0),
-  CTRL         = (1 << 1),
-  ALT          = (1 << 2),
-  BACKSPACE    = (1 << 3),
-  RETURN       = (1 << 4)
+	SHIFT        = (1 << 0),
+	CTRL         = (1 << 1),
+	ALT          = (1 << 2),
+	BACKSPACE    = (1 << 3),
+	RETURN       = (1 << 4)
 }
 
 Id    :: distinct u32;
@@ -146,88 +146,88 @@ Text_Command :: struct { using base: Base_Command, font: Font, pos: Vec2, color:
 Icon_Command :: struct { using base: Base_Command, rect: Rect, id: i32, color: Color }
 
 Command :: struct #raw_union {
-  type: i32,
-  base: Base_Command,
-  jump: Jump_Command,
-  clip: Clip_Command,
-  rect: Rect_Command,
-  text: Text_Command,
-  icon: Icon_Command,
+	type: i32,
+	base: Base_Command,
+	jump: Jump_Command,
+	clip: Clip_Command,
+	rect: Rect_Command,
+	text: Text_Command,
+	icon: Icon_Command,
 }
 
 Layout :: struct {
-  body:      Rect,
-  next:      Rect,
-  position:  Vec2,
-  size:      Vec2,
-  max:       Vec2,
-  widths:    [MU_MAX_WIDTHS] i32,
-  items:     i32,
-  row_index: i32,
-  next_row:  i32,
-  next_type: i32,
-  indent:    i32,
+	body:      Rect,
+	next:      Rect,
+	position:  Vec2,
+	size:      Vec2,
+	max:       Vec2,
+	widths:    [MU_MAX_WIDTHS] i32,
+	items:     i32,
+	row_index: i32,
+	next_row:  i32,
+	next_type: i32,
+	indent:    i32,
 }
 
 Container :: struct {
-  head, tail:   ^Command,
-  rect:         Rect,
-  body:         Rect,
-  content_size: Vec2,
-  scroll:       Vec2,
-  inited:       i32,
-  zindex:       i32,
-  open:         i32,
+	head, tail:   ^Command,
+	rect:         Rect,
+	body:         Rect,
+	content_size: Vec2,
+	scroll:       Vec2,
+	inited:       i32,
+	zindex:       i32,
+	open:         i32,
 }
 
 Style :: struct {
-  font:           Font,
-  size:           Vec2,
-  padding:        i32,
-  spacing:        i32,
-  indent:         i32,
-  title_height:   i32,
-  scrollbar_size: i32,
-  thumb_size:     i32,
-  colors:         [Color_Type.MAX] Color,
+	font:           Font,
+	size:           Vec2,
+	padding:        i32,
+	spacing:        i32,
+	indent:         i32,
+	title_height:   i32,
+	scrollbar_size: i32,
+	thumb_size:     i32,
+	colors:         [Color_Type.MAX] Color,
 }
 
 Context :: struct {
-  /* callbacks */
-  text_width:      proc(font: Font, str: string) -> i32,
-  text_height:     proc(font: Font) -> i32,
-  draw_frame:      proc(ctx: ^Context, rect: Rect, colorid: i32),
-  /* core state */
-  _style:          Style,
-  style:           ^Style,
-  hover:           Id,
-  focus:           Id,
-  last_id:         Id,
-  last_rect:       Rect,
-  last_zindex:     i32,
-  updated_focus:   i32,
-  hover_root:      ^Container,
-  last_hover_root: ^Container,
-  scroll_target:   ^Container,
-  number_buf:      [MU_MAX_FMT] u8,
-  number_editing:  Id,
-  /* stacks */
-  command_list:    Stack(u8, MU_COMMANDLIST_SIZE),
-  root_list:       Stack(^Container, MU_ROOTLIST_SIZE),
-  container_stack: Stack(^Container, MU_CONTAINERSTACK_SIZE),
-  clip_stack:      Stack(Rect, MU_CLIPSTACK_SIZE),
-  id_stack:        Stack(Id, MU_IDSTACK_SIZE),
-  layout_stack:    Stack(Layout, MU_LAYOUTSTACK_SIZE),
-  /* input state */
-  mouse_pos:      Vec2,
-  last_mouse_pos: Vec2,
-  mouse_delta:    Vec2,
-  scroll_delta:   Vec2,
-  mouse_down:     i32,
-  mouse_pressed:  i32,
-  key_down:       i32,
-  key_pressed:    i32,
-  text_input:     [32]u8,
+	/* callbacks */
+	text_width:      proc(font: Font, str: string) -> i32,
+	text_height:     proc(font: Font) -> i32,
+	draw_frame:      proc(ctx: ^Context, rect: Rect, colorid: i32),
+	/* core state */
+	_style:          Style,
+	style:           ^Style,
+	hover:           Id,
+	focus:           Id,
+	last_id:         Id,
+	last_rect:       Rect,
+	last_zindex:     i32,
+	updated_focus:   i32,
+	hover_root:      ^Container,
+	last_hover_root: ^Container,
+	scroll_target:   ^Container,
+	number_buf:      [MU_MAX_FMT] u8,
+	number_editing:  Id,
+	/* stacks */
+	command_list:    Stack(u8, MU_COMMANDLIST_SIZE),
+	root_list:       Stack(^Container, MU_ROOTLIST_SIZE),
+	container_stack: Stack(^Container, MU_CONTAINERSTACK_SIZE),
+	clip_stack:      Stack(Rect, MU_CLIPSTACK_SIZE),
+	id_stack:        Stack(Id, MU_IDSTACK_SIZE),
+	layout_stack:    Stack(Layout, MU_LAYOUTSTACK_SIZE),
+	/* input state */
+	mouse_pos:      Vec2,
+	last_mouse_pos: Vec2,
+	mouse_delta:    Vec2,
+	scroll_delta:   Vec2,
+	mouse_down:     i32,
+	mouse_pressed:  i32,
+	key_down:       i32,
+	key_pressed:    i32,
+	text_input:     [32]u8,
 }
 
 /*
