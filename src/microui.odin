@@ -46,7 +46,7 @@ MU_MAX_FMT              :: 127;
 
 Stack :: struct(T: typeid, N: i32) {
   idx:   i32,
-  items: [N] i32,
+  items: [N] T,
 }
 
 // TODO(oskar): remove this, just use the builtins directly
