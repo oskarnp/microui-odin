@@ -25,11 +25,6 @@ A tiny, portable, immediate-mode UI library written in ~~ANSI C~~ Odin.
   window, panel, header or treenode state internally. It is up to the
   user to manage this data themselves
 
-## Contributing
-The library is designed to be lightweight, providing a foundation to which
-you can easily add custom controls and UI elements; pull requests adding
-additional features will likely not be merged. Bug reports are welcome.
-
 ## License
 This library is free software; you can redistribute it and/or modify it
 under the terms of the MIT license. See [LICENSE](LICENSE) for details.
