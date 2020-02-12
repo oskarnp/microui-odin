@@ -1,12 +1,12 @@
 # microui
 ![screenshot](https://user-images.githubusercontent.com/3920290/56437823-c3dcdb80-62d8-11e9-978a-a0739f9e16f0.png)
 
-A tiny, portable, immediate-mode UI library written in ANSI C
+A tiny, portable, immediate-mode UI library written in ~~ANSI C~~ Odin.
 
 [**Browser Demo**](https://floooh.github.io/sokol-html5/sgl-microui-sapp.html)
 
 ## Features
-* Tiny: around `1100 sloc` of ANSI C
+* Tiny: around `TBD sloc` of ~~ANSI C~~ Odin
 * Works within a fixed-sized memory region: no additional memory is
   allocated
 * Built-in controls: window, panel, button, slider, textbox, label,
