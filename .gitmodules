@@ -1,0 +1,6 @@
+[submodule "demo/odin-sdl2"]
+	path = demo/odin-sdl2
+	url = https://github.com/JoshuaManton/odin-sdl2.git
+[submodule "demo/odin-gl"]
+	path = demo/odin-gl
+	url = https://github.com/vassvik/odin-gl.git
