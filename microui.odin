@@ -28,6 +28,7 @@ import "core:runtime"
 import "core:mem"
 import "core:sort"
 import "core:builtin"
+import "core:strings"
 
 MU_VERSION :: "1.02";
 
@@ -94,43 +95,47 @@ Icon :: enum {
 }
 
 Res :: enum {
-	ACTIVE = (1 << 0),
-	SUBMIT = (1 << 1),
-	CHANGE = (1 << 2)
+	ACTIVE,
+	SUBMIT,
+	CHANGE,
 }
+Res_Bits :: bit_set[Res];
 
 Opt :: enum {
-	ALIGNCENTER  = (1 << 0),
-	ALIGNRIGHT   = (1 << 1),
-	NOINTERACT   = (1 << 2),
-	NOFRAME      = (1 << 3),
-	NORESIZE     = (1 << 4),
-	NOSCROLL     = (1 << 5),
-	NOCLOSE      = (1 << 6),
-	NOTITLE      = (1 << 7),
-	HOLDFOCUS    = (1 << 8),
-	AUTOSIZE     = (1 << 9),
-	POPUP        = (1 << 10),
-	CLOSED       = (1 << 11)
+	ALIGNCENTER,
+	ALIGNRIGHT,
+	NOINTERACT,
+	NOFRAME,
+	NORESIZE,
+	NOSCROLL,
+	NOCLOSE,
+	NOTITLE,
+	HOLDFOCUS,
+	AUTOSIZE,
+	POPUP,
+	CLOSED
 }
+Opt_Bits :: bit_set[Opt];
 
 Mouse :: enum {
-	LEFT       = (1 << 0),
-	RIGHT      = (1 << 1),
-	MIDDLE     = (1 << 2)
+	LEFT,
+	RIGHT,
+	MIDDLE,
 }
+Mouse_Bits :: bit_set[Mouse];
 
 Key :: enum {
-	SHIFT        = (1 << 0),
-	CTRL         = (1 << 1),
-	ALT          = (1 << 2),
-	BACKSPACE    = (1 << 3),
-	RETURN       = (1 << 4)
+	SHIFT,
+	CTRL,
+	ALT,
+	BACKSPACE,
+	RETURN,
 }
+Key_Bits :: bit_set[Key];
 
-Id    :: u32;
+Id    :: distinct u32;
 Real  :: MU_REAL;
-Font  :: rawptr;
+Font  :: distinct rawptr;
 
 Vec2  :: struct { x, y: i32 }
 Rect  :: struct { x, y, w, h: i32 }
@@ -154,28 +159,20 @@ Command :: struct #raw_union {
 }
 
 Layout :: struct {
-	body:      Rect,
-	next:      Rect,
-	position:  Vec2,
-	size:      Vec2,
-	max:       Vec2,
-	widths:    [MU_MAX_WIDTHS] i32,
-	items:     i32,
-	row_index: i32,
-	next_row:  i32,
-	next_type: i32,
-	indent:    i32,
+	body, next:                                    Rect,
+	position, size, max:                           Vec2,
+	widths:                                        [MU_MAX_WIDTHS] i32,
+	items, row_index, next_row, next_type, indent: i32,
 }
 
 Container :: struct {
 	head, tail:   ^Command,
-	rect:         Rect,
-	body:         Rect,
+	rect, body:   Rect,
 	content_size: Vec2,
 	scroll:       Vec2,
-	inited:       i32,
+	inited:       b32,
 	zindex:       i32,
-	open:         i32,
+	open:         b32,
 }
 
 Style :: struct {
@@ -192,51 +189,41 @@ Style :: struct {
 
 Context :: struct {
 	/* callbacks */
-	text_width:      proc(font: Font, str: string) -> i32,
-	text_height:     proc(font: Font) -> i32,
-	draw_frame:      proc(ctx: ^Context, rect: Rect, colorid: Color_Type),
+	text_width:                          proc(font: Font, str: string) -> i32,
+	text_height:                         proc(font: Font) -> i32,
+	draw_frame:                          proc(ctx: ^Context, rect: Rect, colorid: Color_Type),
 	/* core state */
-	_style:          Style,
-	style:           ^Style,
-	hover:           Id,
-	focus:           Id,
-	last_id:         Id,
-	last_rect:       Rect,
-	last_zindex:     i32,
-	updated_focus:   i32,
-	hover_root:      ^Container,
-	last_hover_root: ^Container,
-	scroll_target:   ^Container,
-	number_buf:      [MU_MAX_FMT] u8,
-	number_editing:  Id,
+	_style:                              Style,
+	style:                               ^Style,
+	hover:                               Id,
+	focus:                               Id,
+	last_id:                             Id,
+	last_rect:                           Rect,
+	last_zindex:                         i32,
+	updated_focus:                       b32,
+	hover_root:                          ^Container,
+	last_hover_root:                     ^Container,
+	scroll_target:                       ^Container,
+	number_buf:                          [MU_MAX_FMT] u8,
+	number_editing:                      Id,
 	/* stacks */
-	command_list:    Stack(u8, MU_COMMANDLIST_SIZE),
-	root_list:       Stack(^Container, MU_ROOTLIST_SIZE),
-	container_stack: Stack(^Container, MU_CONTAINERSTACK_SIZE),
-	clip_stack:      Stack(Rect, MU_CLIPSTACK_SIZE),
-	id_stack:        Stack(Id, MU_IDSTACK_SIZE),
-	layout_stack:    Stack(Layout, MU_LAYOUTSTACK_SIZE),
+	command_list:                        Stack(u8, MU_COMMANDLIST_SIZE),
+	root_list:                           Stack(^Container, MU_ROOTLIST_SIZE),
+	container_stack:                     Stack(^Container, MU_CONTAINERSTACK_SIZE),
+	clip_stack:                          Stack(Rect, MU_CLIPSTACK_SIZE),
+	id_stack:                            Stack(Id, MU_IDSTACK_SIZE),
+	layout_stack:                        Stack(Layout, MU_LAYOUTSTACK_SIZE),
 	/* input state */
-	mouse_pos:      Vec2,
-	last_mouse_pos: Vec2,
-	mouse_delta:    Vec2,
-	scroll_delta:   Vec2,
-	mouse_down:     i32,
-	mouse_pressed:  i32,
-	key_down:       i32,
-	key_pressed:    i32,
-	text_input:     [32]u8,
+	mouse_pos, last_mouse_pos:           Vec2,
+	mouse_delta, scroll_delta:           Vec2,
+	mouse_down_bits, mouse_pressed_bits: Mouse_Bits,
+	key_down_bits, key_pressed_bits:     Key_Bits,
+	text_store:                          [32] u8,
+	text_input:                          strings.Builder, // uses `text_store` as backing store with nil_allocator.
 }
 
 expect :: builtin.assert;
 
-/*
-#define push(stk, val) do {                                                 \
-    expect((stk).idx < (int) (sizeof((stk).items) / sizeof(*(stk).items))); \
-    (stk).items[ (stk).idx ] = (val);                                       \
-    (stk).idx++;                                                            \
-  } while (0)
-*/
 push :: proc(stk: ^$T/Stack($V,$N), val: V) {
 	expect(stk.idx < len(stk.items));
 	stk.items[stk.idx] = val;
@@ -247,21 +234,6 @@ pop :: proc(stk: ^$T/Stack($V,$N)) {
 	expect(stk.idx > 0);
 	stk.idx -= 1;
 }
-
-/*
-#define push(stk, val) do {                                                 \
-	expect((stk).idx < (int) (sizeof((stk).items) / sizeof(*(stk).items))); \
-	(stk).items[ (stk).idx ] = (val);                                       \
-	(stk).idx++;                                                            \
-  } while (0)
-
-
-#define pop(stk) do {      \
-	expect((stk).idx > 0); \
-	(stk).idx--;           \
-  } while (0)
-*/
-
 
 @static unclipped_rect := Rect{0, 0, 0x1000000, 0x1000000};
 
@@ -289,12 +261,13 @@ pop :: proc(stk: ^$T/Stack($V,$N)) {
 };
 
 init :: proc(ctx: ^Context) {
-	ctx^ = {};
+	ctx^ = {}; // zero memory
 	ctx.text_width = text_width;
 	ctx.text_height = text_height;
 	ctx.draw_frame = draw_frame;
 	ctx._style = default_style;
 	ctx.style = &ctx._style;
+	ctx.text_input = strings.builder_from_slice(ctx.text_store[:]);
 }
 
 get_clip_rect :: proc(ctx: ^Context) -> Rect {
@@ -336,17 +309,17 @@ end :: proc(ctx: ^Context) {
 	}
 
 	/* unset focus if focus id was not touched this frame */
-	if ctx.updated_focus == 0 do ctx.focus = 0;
-	ctx.updated_focus = 0;
+	if !ctx.updated_focus do ctx.focus = 0;
+	ctx.updated_focus = false;
 
 	/* bring hover root to front if mouse was pressed */
-	if ctx.mouse_pressed != 0 && ctx.hover_root != nil &&
+	if card(ctx.mouse_pressed_bits) == 0 && ctx.hover_root != nil &&
 	   ctx.hover_root.zindex < ctx.last_zindex do bring_to_front(ctx, ctx.hover_root);
 
 	/* reset input state */
-	ctx.key_pressed = 0;
-	ctx.text_input[0] = 0;
-	ctx.mouse_pressed = 0;
+	ctx.key_pressed_bits = {}; // clear
+	strings.reset_builder(&ctx.text_input);
+	ctx.mouse_pressed_bits = {}; // clear
 	ctx.scroll_delta = Vec2{0, 0};
 	ctx.last_mouse_pos = ctx.mouse_pos;
 
@@ -377,7 +350,7 @@ end :: proc(ctx: ^Context) {
 
 set_focus :: proc(ctx: ^Context, id: Id) {
 	ctx.focus = id;
-	ctx.updated_focus = 1;
+	ctx.updated_focus = true;
 }
 
 /* 32bit fnv-1a hash */
@@ -387,7 +360,7 @@ hash :: proc(hash: ^Id, data: rawptr, size: int) {
 	size := size;
 	p := cast(^u8) data;
 	for ; size > 0; size -= 1 {
-		hash^ = (hash^ ~ u32(p^)) * 16777619;
+		hash^ = cast(Id) (u32(hash^) ~ u32(p^)) * 16777619;
 		p = mem.ptr_offset(p, 1);
 	}
 }
@@ -426,63 +399,52 @@ check_clip :: proc(ctx: ^Context, r: Rect) -> Clip {
 	return .PART;
 }
 
-/*
-static void push_layout(mu_Context *ctx, mu_Rect body, mu_Vec2 scroll) {
-  mu_Layout layout;
-  int width = 0;
-  memset(&layout, 0, sizeof(mu_Layout));
-  layout.body = mu_rect(body.x - scroll.x, body.y - scroll.y, body.w, body.h);
-  layout.max = mu_vec2(-0x1000000, -0x1000000);
-  push(ctx->layout_stack, layout);
-  mu_layout_row(ctx, 1, &width, 0);
+push_layout :: proc(ctx: ^Context, body: Rect, scroll: Vec2) {
+	layout: Layout;
+	layout.body = Rect{body.x - scroll.x, body.y - scroll.y, body.w, body.h};
+	layout.max = Vec2{-0x1000000, -0x1000000};
+	push(&ctx.layout_stack, layout);
+	layout_row(ctx, []i32{0}, 0);
 }
 
-
-static mu_Layout* get_layout(mu_Context *ctx) {
-  return &ctx->layout_stack.items[ctx->layout_stack.idx - 1];
+@private get_layout :: proc(ctx: ^Context) -> ^Layout {
+	return &ctx.layout_stack.items[ctx.layout_stack.idx - 1];
 }
 
-
-static void push_container(mu_Context *ctx, mu_Container *cnt) {
-  push(ctx->container_stack, cnt);
-  mu_push_id(ctx, &cnt, sizeof(mu_Container*));
+@private push_container :: proc(ctx: ^Context, cnt: ^Container) {
+	cnt := cnt;
+	push(&ctx.container_stack, cnt);
+	push_id(ctx, &cnt, size_of(^Container));
 }
 
-
-static void pop_container(mu_Context *ctx) {
-  mu_Container *cnt = mu_get_container(ctx);
-  mu_Layout *layout = get_layout(ctx);
-  cnt->content_size.x = layout->max.x - layout->body.x;
-  cnt->content_size.y = layout->max.y - layout->body.y;
-  /* pop container, layout and id */
-  pop(ctx->container_stack);
-  pop(ctx->layout_stack);
-  mu_pop_id(ctx);
+@private pop_container :: proc(ctx: ^Context) {
+	cnt := get_container(ctx);
+	layout := get_layout(ctx);
+	cnt.content_size.x = layout.max.x - layout.body.x;
+	cnt.content_size.y = layout.max.y - layout.body.y;
+	/* pop container, layout and id */
+	pop(&ctx.container_stack);
+	pop(&ctx.layout_stack);
+	pop_id(ctx);
 }
 
-
-mu_Container* mu_get_container(mu_Context *ctx) {
-  expect(ctx->container_stack.idx > 0);
-  return ctx->container_stack.items[ ctx->container_stack.idx - 1 ];
+get_container :: proc(ctx: ^Context) -> ^Container {
+	expect(ctx.container_stack.idx > 0);
+	return ctx.container_stack.items[ctx.container_stack.idx - 1];
 }
 
-
-void mu_init_window(mu_Context *ctx, mu_Container *cnt, int opt) {
-  memset(cnt, 0, sizeof(*cnt));
-  cnt->inited = 1;
-  cnt->open = opt & MU_OPT_CLOSED ? 0 : 1;
-  cnt->rect = mu_rect(100, 100, 300, 300);
-  mu_bring_to_front(ctx, cnt);
+init_window :: proc(ctx: ^Context, cnt: ^Container, opt: Opt_Bits) {
+	cnt^ = {}; // zero memory
+	cnt.inited = true;
+	cnt.open = .CLOSED in opt;
+	cnt.rect = Rect{100, 100, 300, 300};
+	bring_to_front(ctx, cnt);
 }
-
-
-*/
 
 bring_to_front :: proc(ctx: ^Context, cnt: ^Container) {
 	ctx.last_zindex += 1;
 	cnt.zindex = ctx.last_zindex;
 }
-
 
 /*============================================================================
 ** input handlers
@@ -492,15 +454,15 @@ input_mousemove :: proc(ctx: ^Context, x, y: i32) {
 	ctx.mouse_pos = Vec2{x, y};
 }
 
-input_mousedown :: proc(ctx: ^Context, x, y, btn: i32) {
+input_mousedown :: proc(ctx: ^Context, x, y: i32, btn: Mouse) {
 	input_mousemove(ctx, x, y);
-	ctx.mouse_down |= btn;
-	ctx.mouse_pressed |= btn;
+	incl(&ctx.mouse_down_bits, btn);
+	incl(&ctx.mouse_pressed_bits, btn);
 }
 
-input_mouseup :: proc(ctx: ^Context, x, y, btn: i32) {
+input_mouseup :: proc(ctx: ^Context, x, y: i32, btn: Mouse) {
 	input_mousemove(ctx, x, y);
-	ctx.mouse_down &= ~btn;
+	excl(&ctx.mouse_down_bits, btn);
 }
 
 input_scroll :: proc(ctx: ^Context, x, y: i32) {
@@ -508,23 +470,18 @@ input_scroll :: proc(ctx: ^Context, x, y: i32) {
 	ctx.scroll_delta.y += y;
 }
 
-input_keydown :: proc(ctx: ^Context, key: i32) {
-	ctx.key_pressed |= key;
-	ctx.key_down |= key;
+input_keydown :: proc(ctx: ^Context, key: Key) {
+	incl(&ctx.key_pressed_bits, key);
+	incl(&ctx.key_down_bits, key);
 }
 
-input_keyup :: proc(ctx: ^Context, key: i32) {
-	ctx.key_down &= ~key;
+input_keyup :: proc(ctx: ^Context, key: Key) {
+	excl(&ctx.key_down_bits, key);
 }
 
 input_text :: proc(ctx: ^Context, text: string) {
-	// TODO(oskar)
-	// int len = strlen(ctx->text_input);
-	// int size = strlen(text) + 1;
-	// expect(len + size <= (int) sizeof(ctx->text_input));
-	// memcpy(ctx->text_input + len, text, size);
+	strings.write_string(&ctx.text_input, text);
 }
-
 
 /*
 /*============================================================================
@@ -658,19 +615,22 @@ void mu_layout_end_column(mu_Context *ctx) {
   a->max.y = mu_max(a->max.y, b->max.y);
 }
 
+*/
 
-void mu_layout_row(mu_Context *ctx, int items, const int *widths, int height) {
-  mu_Layout *layout = get_layout(ctx);
-  if (widths) {
-	expect(items <= MU_MAX_WIDTHS);
-	memcpy(layout->widths, widths, items * sizeof(widths[0]));
-  }
-  layout->items = items;
-  layout->position = mu_vec2(layout->indent, layout->next_row);
-  layout->size.y = height;
-  layout->row_index = 0;
+layout_row :: proc(ctx: ^Context, widths: []i32, height: i32) {
+	items := cast(i32) len(widths);
+	layout := get_layout(ctx);
+	if len(widths) > 0 {
+		expect(items <= MU_MAX_WIDTHS);
+		runtime.mem_copy(&layout.widths, &widths[0], int(items) * size_of(widths[0]));
+	}
+	layout.items = items;
+	layout.position = Vec2{layout.indent, layout.next_row};
+	layout.size.y = height;
+	layout.row_index = 0;
 }
 
+/*
 
 void mu_layout_width(mu_Context *ctx, int width) {
   get_layout(ctx)->size.x = width;
