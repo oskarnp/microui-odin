@@ -352,8 +352,9 @@ end :: proc(ctx: ^Context) {
 
 	/* sort root containers by zindex */
 	n := ctx.root_list.idx;
-	compare_zindex :: proc(a, b: ^Container) -> int { return int(a.zindex) - int(b.zindex); }
-	sort.quick_sort_proc(ctx.root_list.items[:], compare_zindex);
+	sort.quick_sort_proc(ctx.root_list.items[:], proc(a, b: ^Container) -> int {
+		return int(a.zindex) - int(b.zindex);
+	});
 
 	/* set root container jump commands */
 	for i := 0; i < n; i += 1 {
