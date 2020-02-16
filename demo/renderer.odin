@@ -1,3 +1,57 @@
+package microui_demo
+
+import gl  "./odin-gl"
+import sdl "./odin-sdl2"
+import mu  "../"
+
+window: ^sdl.Window;
+width: i32  = 800;
+height: i32 = 600;
+
+r_init :: proc() {
+  /* init SDL window */
+  window = sdl.create_window(
+  nil, cast(i32)sdl.Window_Pos.Undefined, cast(i32)sdl.Window_Pos.Undefined,
+  width, height, sdl.Window_Flags.Open_GL);
+  sdl.gl_create_context(window);
+
+  /* init gl */
+  gl.Enable(gl.BLEND);
+  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.Disable(gl.CULL_FACE);
+  gl.Disable(gl.DEPTH_TEST);
+  gl.Enable(gl.SCISSOR_TEST);
+  gl.Enable(gl.TEXTURE_2D);
+  // gl.EnableClientState(gl.VERTEX_ARRAY);
+  // gl.EnableClientState(gl.TEXTURE_COORD_ARRAY);
+  // gl.EnableClientState(gl.COLOR_ARRAY);
+
+  /* init texture */
+  id: u32;
+  gl.GenTextures(1, &id);
+  gl.BindTexture(gl.TEXTURE_2D, id);
+  gl.TexImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, ATLAS_WIDTH, ATLAS_HEIGHT, 0, gl.ALPHA, gl.UNSIGNED_BYTE, &atlas_texture);
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  assert(gl.GetError() == 0);
+}
+
+r_clear :: proc(clr: mu.Color) {
+	// TODO(oskar)
+}
+
+r_get_text_width :: proc(text: string) -> i32 {
+	// TODO(oskar)
+	return 0;
+}
+
+r_get_text_height :: proc() -> i32 {
+	// TODO(oskar)
+	return 0;
+}
+
+
+/*
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <assert.h>
@@ -11,44 +65,17 @@ static GLfloat  vert_buf[BUFFER_SIZE *  8];
 static GLubyte color_buf[BUFFER_SIZE * 16];
 static GLuint  index_buf[BUFFER_SIZE *  6];
 
-static int width  = 800;
-static int height = 600;
 static int buf_idx;
 
 static SDL_Window *window;
 
 
-void r_init(void) {
-  /* init SDL window */
-  window = SDL_CreateWindow(
-    NULL, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-    width, height, SDL_WINDOW_OPENGL);
-  SDL_GL_CreateContext(window);
-
-  /* init gl */
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
-  glEnable(GL_SCISSOR_TEST);
-  glEnable(GL_TEXTURE_2D);
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  glEnableClientState(GL_COLOR_ARRAY);
-
-  /* init texture */
-  GLuint id;
-  glGenTextures(1, &id);
-  glBindTexture(GL_TEXTURE_2D, id);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, ATLAS_WIDTH, ATLAS_HEIGHT, 0,
-    GL_ALPHA, GL_UNSIGNED_BYTE, atlas_texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  assert(glGetError() == 0);
-}
+*/
 
 
-static void flush(void) {
+flush :: proc() {
+	// TODO(oskar)
+/*
   if (buf_idx == 0) { return; }
 
   glViewport(0, 0, width, height);
@@ -71,9 +98,11 @@ static void flush(void) {
   glPopMatrix();
 
   buf_idx = 0;
+*/
 }
 
 
+/*
 static void push_quad(mu_Rect dst, mu_Rect src, mu_Color color) {
   if (buf_idx == BUFFER_SIZE) { flush(); }
 
@@ -131,13 +160,13 @@ void r_draw_rect(mu_Rect rect, mu_Color color) {
 void r_draw_text(const char *text, mu_Vec2 pos, mu_Color color) {
   mu_Rect dst = { pos.x, pos.y, 0, 0 };
   for (const char *p = text; *p; p++) {
-    if ((*p & 0xc0) == 0x80) { continue; }
-    int chr = mu_min((unsigned char) *p, 127);
-    mu_Rect src = atlas[ATLAS_FONT + chr];
-    dst.w = src.w;
-    dst.h = src.h;
-    push_quad(dst, src, color);
-    dst.x += dst.w;
+	if ((*p & 0xc0) == 0x80) { continue; }
+	int chr = mu_min((unsigned char) *p, 127);
+	mu_Rect src = atlas[ATLAS_FONT + chr];
+	dst.w = src.w;
+	dst.h = src.h;
+	push_quad(dst, src, color);
+	dst.x += dst.w;
   }
 }
 
@@ -153,9 +182,9 @@ void r_draw_icon(int id, mu_Rect rect, mu_Color color) {
 int r_get_text_width(const char *text, int len) {
   int res = 0;
   for (const char *p = text; *p && len--; p++) {
-    if ((*p & 0xc0) == 0x80) { continue; }
-    int chr = mu_min((unsigned char) *p, 127);
-    res += atlas[ATLAS_FONT + chr].w;
+	if ((*p & 0xc0) == 0x80) { continue; }
+	int chr = mu_min((unsigned char) *p, 127);
+	res += atlas[ATLAS_FONT + chr].w;
   }
   return res;
 }
@@ -178,8 +207,11 @@ void r_clear(mu_Color clr) {
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
+*/
 
-void r_present(void) {
+r_present :: proc() {
   flush();
-  SDL_GL_SwapWindow(window);
+  sdl.gl_swap_window(window);
 }
+
+
