@@ -3,7 +3,7 @@
 
 A tiny, portable, immediate-mode UI library written in ~~ANSI C~~ Odin.
 
-[**Browser Demo**](https://floooh.github.io/sokol-html5/sgl-microui-sapp.html)
+[**Browser Demo**](https://floooh.github.io/sokol-html5/sgl-microui-sapp.html) (rxi's microui)
 
 ## Features
 * Tiny: around `TBD sloc` of ~~ANSI C~~ Odin
