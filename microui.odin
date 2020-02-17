@@ -618,13 +618,13 @@ void mu_layout_end_column(mu_Context *ctx) {
 */
 
 layout_row :: proc(ctx: ^Context, widths: []i32, height: i32) {
-	items := cast(i32) len(widths);
+	items := len(widths);
 	layout := get_layout(ctx);
-	if len(widths) > 0 {
+	if items > 0 {
 		expect(items <= MU_MAX_WIDTHS);
-		runtime.mem_copy(&layout.widths, &widths[0], int(items) * size_of(widths[0]));
+		runtime.mem_copy(&layout.widths, &widths[0], items * size_of(widths[0]));
 	}
-	layout.items = items;
+	layout.items = cast(i32) items;
 	layout.position = Vec2{layout.indent, layout.next_row};
 	layout.size.y = height;
 	layout.row_index = 0;
