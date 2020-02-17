@@ -436,7 +436,7 @@ get_container :: proc(ctx: ^Context) -> ^Container {
 init_window :: proc(ctx: ^Context, cnt: ^Container, opt: Opt_Bits) {
 	cnt^ = {}; // zero memory
 	cnt.inited = true;
-	cnt.open = .CLOSED in opt;
+	cnt.open = .CLOSED not_in opt;
 	cnt.rect = Rect{100, 100, 300, 300};
 	bring_to_front(ctx, cnt);
 }
