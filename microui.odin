@@ -77,16 +77,16 @@ Color_Type :: enum {
 	TITLETEXT,
 	PANELBG,
 	BUTTON,
-	BUTTONHOVER,
-	BUTTONFOCUS,
+	BUTTONHOVER = BUTTON+1,
+	BUTTONFOCUS = BUTTON+2,
 	BASE,
-	BASEHOVER,
-	BASEFOCUS,
+	BASEHOVER = BASE+1,
+	BASEFOCUS = BASE+2,
 	SCROLLBASE,
 	SCROLLTHUMB
 }
 
-Icon :: enum {
+Icon :: enum i32 {
 	CLOSE = 1,
 	CHECK,
 	COLLAPSED,
@@ -133,6 +133,8 @@ Key :: enum {
 }
 Key_Bits :: bit_set[Key];
 
+Layout_Type :: enum { NONE = 0, RELATIVE = 1, ABSOLUTE = 2 }
+
 Id    :: distinct u32;
 Real  :: MU_REAL;
 Font  :: distinct rawptr;
@@ -146,7 +148,7 @@ Jump_Command :: struct { using base: Base_Command, dst: rawptr }
 Clip_Command :: struct { using base: Base_Command, rect: Rect }
 Rect_Command :: struct { using base: Base_Command, rect: Rect, color: Color }
 Text_Command :: struct { using base: Base_Command, font: Font, pos: Vec2, color: Color, str: [1]u8, }
-Icon_Command :: struct { using base: Base_Command, rect: Rect, id: i32, color: Color }
+Icon_Command :: struct { using base: Base_Command, rect: Rect, id: Icon, color: Color }
 
 Command :: struct #raw_union {
 	type: Command_Type,
@@ -159,10 +161,12 @@ Command :: struct #raw_union {
 }
 
 Layout :: struct {
-	body, next:                                    Rect,
-	position, size, max:                           Vec2,
-	widths:                                        [MU_MAX_WIDTHS] i32,
-	items, row_index, next_row, next_type, indent: i32,
+	body, next:                 Rect,
+	position, size, max:        Vec2,
+	widths:                     [MU_MAX_WIDTHS] i32,
+	items, row_index, next_row: i32,
+	next_type:                  Layout_Type,
+	indent:                     i32,
 }
 
 Container :: struct {
@@ -404,7 +408,7 @@ push_layout :: proc(ctx: ^Context, body: Rect, scroll: Vec2) {
 	layout.body = Rect{body.x - scroll.x, body.y - scroll.y, body.w, body.h};
 	layout.max = Vec2{-0x1000000, -0x1000000};
 	push(&ctx.layout_stack, layout);
-	layout_row(ctx, []i32{0}, 0);
+	layout_row(ctx, 1, []i32{0}, 0);
 }
 
 @private get_layout :: proc(ctx: ^Context) -> ^Layout {
@@ -534,28 +538,6 @@ draw_box :: proc(ctx: ^Context, rect: Rect, color: Color) {
 	draw_rect(ctx, Rect{rect.x+rect.w-1, rect.y,          1,        rect.h}, color);
 }
 
-/*
-void mu_draw_text(mu_Context *ctx, mu_Font font, const char *str, int len,
-  mu_Vec2 pos, mu_Color color)
-{
-  mu_Command *cmd;
-  mu_Rect rect = mu_rect(
-	pos.x, pos.y, ctx->text_width(font, str, len), ctx->text_height(font));
-  int clipped = mu_check_clip(ctx, rect);
-  if (clipped == MU_CLIP_ALL ) { return; }
-  if (clipped == MU_CLIP_PART) { mu_set_clip(ctx, mu_get_clip_rect(ctx)); }
-  /* add command */
-  if (len < 0) { len = strlen(str); }
-  cmd = mu_push_command(ctx, MU_COMMAND_TEXT, sizeof(mu_TextCommand) + len);
-  memcpy(cmd->text.str, str, len);
-  cmd->text.str[len] = '\0';
-  cmd->text.pos = pos;
-  cmd->text.color = color;
-  cmd->text.font = font;
-  /* reset clipping if it was set */
-  if (clipped) { mu_set_clip(ctx, unclipped_rect); }
-}
-*/
 draw_text :: proc(ctx: ^Context, font: Font, str: string, pos: Vec2, color: Color) {
 	rect := Rect{pos.x, pos.y, ctx.text_width(font, str), ctx.text_height(font)};
 	clipped := check_clip(ctx, rect);
@@ -573,205 +555,182 @@ draw_text :: proc(ctx: ^Context, font: Font, str: string, pos: Vec2, color: Colo
 	if clipped != .NONE do set_clip(ctx, unclipped_rect);
 }
 
-
-/*
-void mu_draw_icon(mu_Context *ctx, int id, mu_Rect rect, mu_Color color) {
-  mu_Command *cmd;
-  /* do clip command if the rect isn't fully contained within the cliprect */
-  int clipped = mu_check_clip(ctx, rect);
-  if (clipped == MU_CLIP_ALL ) { return; }
-  if (clipped == MU_CLIP_PART) { mu_set_clip(ctx, mu_get_clip_rect(ctx)); }
-  /* do icon command */
-  cmd = mu_push_command(ctx, MU_COMMAND_ICON, sizeof(mu_IconCommand));
-  cmd->icon.id = id;
-  cmd->icon.rect = rect;
-  cmd->icon.color = color;
-  /* reset clipping if it was set */
-  if (clipped) { mu_set_clip(ctx, unclipped_rect); }
+draw_icon :: proc(ctx: ^Context, id: Icon, rect: Rect, color: Color) {
+	/* do clip command if the rect isn't fully contained within the cliprect */
+	clipped := check_clip(ctx, rect);
+	if clipped == .ALL do return;
+	if clipped == .PART do set_clip(ctx, get_clip_rect(ctx));
+	/* do icon command */
+	cmd := push_command(ctx, .ICON, size_of(Icon_Command));
+	cmd.icon.id = id;
+	cmd.icon.rect = rect;
+	cmd.icon.color = color;
+	/* reset clipping if it was set */
+	if clipped != .NONE do set_clip(ctx, unclipped_rect);
 }
-
 
 /*============================================================================
 ** layout
 **============================================================================*/
 
-enum { RELATIVE = 1, ABSOLUTE = 2 };
-
-
-void mu_layout_begin_column(mu_Context *ctx) {
-  push_layout(ctx, mu_layout_next(ctx), mu_vec2(0, 0));
+layout_begin_column :: proc(ctx: ^Context) {
+	push_layout(ctx, layout_next(ctx), Vec2{0, 0});
 }
 
-
-void mu_layout_end_column(mu_Context *ctx) {
-  mu_Layout *a, *b;
-  b = get_layout(ctx);
-  pop(ctx->layout_stack);
-  /* inherit position/next_row/max from child layout if they are greater */
-  a = get_layout(ctx);
-  a->position.x = mu_max(a->position.x, b->position.x + b->body.x - a->body.x);
-  a->next_row = mu_max(a->next_row, b->next_row + b->body.y - a->body.y);
-  a->max.x = mu_max(a->max.x, b->max.x);
-  a->max.y = mu_max(a->max.y, b->max.y);
+layout_end_column :: proc(ctx: ^Context) {
+	b := get_layout(ctx);
+	pop(&ctx.layout_stack);
+	/* inherit position/next_row/max from child layout if they are greater */
+	a := get_layout(ctx);
+	a.position.x = max(a.position.x, b.position.x + b.body.x - a.body.x);
+	a.next_row = max(a.next_row, b.next_row + b.body.y - a.body.y);
+	a.max.x = max(a.max.x, b.max.x);
+	a.max.y = max(a.max.y, b.max.y);
 }
 
-*/
-
-layout_row :: proc(ctx: ^Context, widths: []i32, height: i32) {
-	items := len(widths);
+layout_row :: proc(ctx: ^Context, items: i32, widths: []i32, height: i32) {
 	layout := get_layout(ctx);
-	if items > 0 {
-		expect(items <= MU_MAX_WIDTHS);
-		runtime.mem_copy(&layout.widths, &widths[0], items * size_of(widths[0]));
+	if len(widths) > 0 {
+		// NOTE(oskar): This was `items` instead of `len(widths)` in original. Seems
+		// like length of slice is what we actually want here? Do we even need to
+		// pass `items` at all?
+		n := len(widths);
+		expect(n <= MU_MAX_WIDTHS);
+		runtime.mem_copy(&layout.widths, &widths[0], n * size_of(widths[0]));
 	}
-	layout.items = cast(i32) items;
+	layout.items = items;
 	layout.position = Vec2{layout.indent, layout.next_row};
 	layout.size.y = height;
 	layout.row_index = 0;
 }
 
-/*
-
-void mu_layout_width(mu_Context *ctx, int width) {
-  get_layout(ctx)->size.x = width;
+layout_width :: proc(ctx: ^Context, width: i32) {
+	get_layout(ctx).size.x = width;
 }
 
-
-void mu_layout_height(mu_Context *ctx, int height) {
-  get_layout(ctx)->size.y = height;
+layout_height :: proc(ctx: ^Context, height: i32) {
+	get_layout(ctx).size.y = height;
 }
 
-
-void mu_layout_set_next(mu_Context *ctx, mu_Rect r, int relative) {
-  mu_Layout *layout = get_layout(ctx);
-  layout->next = r;
-  layout->next_type = relative ? RELATIVE : ABSOLUTE;
+layout_set_next :: proc(ctx: ^Context, r: Rect, relative: bool) {
+	layout := get_layout(ctx);
+	layout.next = r;
+	layout.next_type = relative ? .RELATIVE : .ABSOLUTE;
 }
 
+layout_next :: proc(ctx: ^Context) -> (res: Rect) {
+	layout := get_layout(ctx);
+	style := ctx.style;
+	defer ctx.last_rect = res;
 
-mu_Rect mu_layout_next(mu_Context *ctx) {
-  mu_Layout *layout = get_layout(ctx);
-  mu_Style *style = ctx->style;
-  mu_Rect res;
+	if layout.next_type != .NONE {
+		/* handle rect set by `layout_set_next` */
+		type := layout.next_type;
+		layout.next_type = .NONE;
+		res = layout.next;
+		if type == .ABSOLUTE do return;
+	} else {
+		/* handle next row */
+		if layout.row_index == layout.items {
+			layout_row(ctx, layout.items, []i32{}, layout.size.y);
+		}
 
-  if (layout->next_type) {
-	/* handle rect set by `mu_layout_set_next` */
-	int type = layout->next_type;
-	layout->next_type = 0;
-	res = layout->next;
-	if (type == ABSOLUTE) { return (ctx->last_rect = res); }
+		/* position */
+		res.x = layout.position.x;
+		res.y = layout.position.y;
 
-  } else {
-	/* handle next row */
-	if (layout->row_index == layout->items) {
-	  mu_layout_row(ctx, layout->items, NULL, layout->size.y);
+		/* size */
+		res.w = layout.items > -1 ? layout.widths[layout.row_index] : layout.size.x;
+		res.h = layout.size.y;
+		if res.w == 0 do res.w = style.size.x + style.padding * 2;
+		if res.h == 0 do res.h = style.size.y + style.padding * 2;
+		if res.w <  0 do res.w += layout.body.w - res.x + 1;
+		if res.h <  0 do res.h += layout.body.h - res.y + 1;
+
+		layout.row_index += 1;
 	}
 
-	/* position */
-	res.x = layout->position.x;
-	res.y = layout->position.y;
+	/* update position */
+	layout.position.x += res.w + style.spacing;
+	layout.next_row = max(layout.next_row, res.y + res.h + style.spacing);
 
-	/* size */
-	res.w =
-	  layout->items > -1 ? layout->widths[layout->row_index] : layout->size.x;
-	res.h = layout->size.y;
-	if (res.w == 0) { res.w = style->size.x + style->padding * 2; }
-	if (res.h == 0) { res.h = style->size.y + style->padding * 2; }
-	if (res.w <  0) { res.w += layout->body.w - res.x + 1; }
-	if (res.h <  0) { res.h += layout->body.h - res.y + 1; }
+	/* apply body offset */
+	res.x += layout.body.x;
+	res.y += layout.body.y;
 
-	layout->row_index++;
-  }
-
-  /* update position */
-  layout->position.x += res.w + style->spacing;
-  layout->next_row = mu_max(layout->next_row, res.y + res.h + style->spacing);
-
-  /* apply body offset */
-  res.x += layout->body.x;
-  res.y += layout->body.y;
-
-  /* update max position */
-  layout->max.x = mu_max(layout->max.x, res.x + res.w);
-  layout->max.y = mu_max(layout->max.y, res.y + res.h);
-
-  return (ctx->last_rect = res);
+	/* update max position */
+	layout.max.x = max(layout.max.x, res.x + res.w);
+	layout.max.y = max(layout.max.y, res.y + res.h);
+	return;
 }
-
 
 /*============================================================================
 ** controls
 **============================================================================*/
 
-static int in_hover_root(mu_Context *ctx) {
-  int i = ctx->container_stack.idx;
-  while (i--) {
-	if (ctx->container_stack.items[i] == ctx->last_hover_root) { return 1; }
-	/* only root containers have their `head` field set; stop searching if we've
-	** reached the current root container */
-	if (ctx->container_stack.items[i]->head) { break; }
-  }
-  return 0;
-}
-
-
-void mu_draw_control_frame(mu_Context *ctx, mu_Id id, mu_Rect rect,
-  int colorid, int opt)
-{
-  if (opt & MU_OPT_NOFRAME) { return; }
-  colorid += (ctx->focus == id) ? 2 : (ctx->hover == id) ? 1 : 0;
-  ctx->draw_frame(ctx, rect, colorid);
-}
-
-
-void mu_draw_control_text(mu_Context *ctx, const char *str, mu_Rect rect,
-  int colorid, int opt)
-{
-  mu_Vec2 pos;
-  mu_Font font = ctx->style->font;
-  int tw = ctx->text_width(font, str, -1);
-  mu_push_clip_rect(ctx, rect);
-  pos.y = rect.y + (rect.h - ctx->text_height(font)) / 2;
-  if (opt & MU_OPT_ALIGNCENTER) {
-	pos.x = rect.x + (rect.w - tw) / 2;
-  } else if (opt & MU_OPT_ALIGNRIGHT) {
-	pos.x = rect.x + rect.w - tw - ctx->style->padding;
-  } else {
-	pos.x = rect.x + ctx->style->padding;
-  }
-  mu_draw_text(ctx, font, str, -1, pos, ctx->style->colors[colorid]);
-  mu_pop_clip_rect(ctx);
-}
-
-
-int mu_mouse_over(mu_Context *ctx, mu_Rect rect) {
-  return rect_overlaps_vec2(rect, ctx->mouse_pos) &&
-	rect_overlaps_vec2(mu_get_clip_rect(ctx), ctx->mouse_pos) &&
-	in_hover_root(ctx);
-}
-
-
-void mu_update_control(mu_Context *ctx, mu_Id id, mu_Rect rect, int opt) {
-  int mouseover = mu_mouse_over(ctx, rect);
-
-  if (ctx->focus == id) { ctx->updated_focus = 1; }
-  if (opt & MU_OPT_NOINTERACT) { return; }
-  if (mouseover && !ctx->mouse_down) { ctx->hover = id; }
-
-  if (ctx->focus == id) {
-	if (ctx->mouse_pressed && !mouseover) { mu_set_focus(ctx, 0); }
-	if (!ctx->mouse_down && ~opt & MU_OPT_HOLDFOCUS) { mu_set_focus(ctx, 0); }
-  }
-
-  if (ctx->hover == id) {
-	if (!mouseover) {
-	  ctx->hover = 0;
-	} else if (ctx->mouse_pressed) {
-	  mu_set_focus(ctx, id);
+@private in_hover_root :: proc(ctx: ^Context) -> bool {
+	i := ctx.container_stack.idx;
+	for ; i > 0; i -= 1 {
+		if ctx.container_stack.items[i] == ctx.last_hover_root do return true;
+		/* only root containers have their `head` field set; stop searching if we've
+		** reached the current root container */
+		if ctx.container_stack.items[i].head != nil do break;
 	}
-  }
+	return false;
 }
 
+draw_control_frame :: proc(ctx: ^Context, id: Id, rect: Rect, colorid: Color_Type, opt: Opt_Bits) {
+	expect(colorid == .BUTTON || colorid == .BASE);
+	if .NOFRAME in opt do return;
+	colorid := Color_Type(int(colorid) + int((ctx.focus == id) ? 2 : (ctx.hover == id) ? 1 : 0));
+	ctx.draw_frame(ctx, rect, colorid);
+}
+
+draw_control_text :: proc(ctx: ^Context, str: string, rect: Rect, colorid: Color_Type, opt: Opt_Bits) {
+	pos: Vec2;
+	font := ctx.style.font;
+	tw := ctx.text_width(font, str);
+	push_clip_rect(ctx, rect);
+	pos.y = rect.y + (rect.h - ctx.text_height(font)) / 2;
+	if .ALIGNCENTER in opt {
+		pos.x = rect.x + (rect.w - tw) / 2;
+	} else if .ALIGNRIGHT in opt {
+		pos.x = rect.x + rect.w - tw - ctx.style.padding;
+	} else {
+		pos.x = rect.x + ctx.style.padding;
+	}
+	draw_text(ctx, font, str, pos, ctx.style.colors[colorid]);
+	pop_clip_rect(ctx);
+}
+
+mouse_over :: proc(ctx: ^Context, rect: Rect) -> bool {
+	return rect_overlaps_vec2(rect, ctx.mouse_pos) &&
+           rect_overlaps_vec2(get_clip_rect(ctx), ctx.mouse_pos) &&
+           in_hover_root(ctx);
+}
+
+update_control :: proc(ctx: ^Context, id: Id, rect: Rect, opt: Opt_Bits) {
+	mouseover := mouse_over(ctx, rect);
+
+	if ctx.focus == id do ctx.updated_focus = true;
+	if .NOINTERACT in opt do return;
+	if mouseover && card(ctx.mouse_down_bits) == 0 do ctx.hover = id;
+
+	if ctx.focus == id {
+		if card(ctx.mouse_pressed_bits) != 0 && !mouseover do set_focus(ctx, 0);
+		if card(ctx.mouse_down_bits) == 0 && .HOLDFOCUS not_in opt do set_focus(ctx, 0);
+	}
+
+	if ctx.hover == id {
+		if !mouseover {
+			ctx.hover = 0;
+		} else if card(ctx.mouse_pressed_bits) != 0 {
+			set_focus(ctx, id);
+		}
+	}
+}
+
+/*
 
 void mu_text(mu_Context *ctx, const char *text) {
   const char *start, *end, *p = text;
