@@ -1,7 +1,12 @@
-# microui
-![screenshot](https://user-images.githubusercontent.com/3920290/56437823-c3dcdb80-62d8-11e9-978a-a0739f9e16f0.png)
+# microui-odin
 
+## Work in progress
+* See [`TODO.md`](TODO.md) for current status.
+
+## Description
 A tiny, portable, immediate-mode UI library written in ~~ANSI C~~ Odin.
+
+![screenshot](https://user-images.githubusercontent.com/3920290/56437823-c3dcdb80-62d8-11e9-978a-a0739f9e16f0.png)
 
 [**Browser Demo**](https://floooh.github.io/sokol-html5/sgl-microui-sapp.html) (rxi's microui)
 
