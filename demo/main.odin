@@ -1,20 +1,32 @@
 package microui_demo
 
 import sdl "./odin-sdl2"
-import gl  "./odin-gl"
 import mu  "../"
 
+import "core:fmt"
+import "core:log"
+
+@static bg: [3]u8 = { 90, 95, 100 };
+
 main :: proc() {
+	context.logger = log.create_console_logger(ident = "demo");
+
 	/* init SDL and renderer */
-	sdl.init(.Everything);
-	r_init();
+	if err := sdl.init(.Video); err != 0 {
+		log.error("init(): ", sdl.get_error());
+		return;
+	}
+	if ok := r_init(); !ok {
+		return;
+	}
 
 	/* init microui */
 	ctx := new(mu.Context);
 	defer free(ctx);
 	mu.init(ctx);
-	text_width  :: proc(font: mu.Font, text: string) -> i32 { return r_get_text_width(text); }
-	text_height :: proc(font: mu.Font) -> i32 { return r_get_text_height(); }
+
+	text_width  :: inline proc(font: mu.Font, text: string) -> i32 do return r_get_text_width(text);
+	text_height :: inline proc(font: mu.Font) -> i32 do return r_get_text_height();
 	ctx.text_width = text_width;
 	ctx.text_height = text_height;
 
@@ -22,23 +34,59 @@ main :: proc() {
 		/* handle SDL events */
 		e: sdl.Event = ---;
 		for sdl.poll_event(&e) != 0 {
+			fmt.println(e.type);
 			#partial switch e.type {
 			case .Quit: break main_loop;
 			case .Mouse_Motion: mu.input_mousemove(ctx, e.motion.x, e.motion.y);
 			case .Mouse_Wheel: mu.input_scroll(ctx, 0, e.wheel.y * -30);
 			case .Text_Input: mu.input_text(ctx, string(cstring(&e.text.text[0])));
 
-			case .Mouse_Button_Down:
-			case .Mouse_Button_Up:
-				b := button_map(cast(i32)e.button.button);
-				if b != 0 && e.type == .Mouse_Button_Down do mu.input_mousedown(ctx, e.button.x, e.button.y, i32(b));
-				if b != 0 && e.type == .Mouse_Button_Up   do mu.input_mouseup(ctx, e.button.x, e.button.y, i32(b));
+			case .Mouse_Button_Down, .Mouse_Button_Up:
+				button_map :: inline proc(button: u8) -> (res: mu.Mouse, ok: bool) {
+					ok = true;
+					switch button {
+						case 1: res = .LEFT;
+						case 2: res = .MIDDLE;
+						case 3: res = .RIGHT;
+						case: ok = false;
+					}
+					return;
+				}
+				if btn, ok := button_map(e.button.button); ok {
+					switch {
+					case e.type == .Mouse_Button_Down: mu.input_mousedown(ctx, e.button.x, e.button.y, btn);
+					case e.type == .Mouse_Button_Up:   mu.input_mouseup(ctx, e.button.x, e.button.y, btn);
+					}
+				}
 
-			case .Key_Down:
-			case .Key_Up:
-				c := key_map(e.key.keysym.sym);
-				if c != 0 && e.type == .Key_Down do mu.input_keydown(ctx, c);
-				if c != 0 && e.type == .Key_Up   do mu.input_keyup(ctx, c);
+			case .Key_Down, .Key_Up:
+				if e.type == .Key_Up && e.key.keysym.sym == sdl.SDLK_ESCAPE {
+					quit_event: sdl.Event;
+					quit_event.type = .Quit;
+					sdl.push_event(&quit_event);
+				}
+
+				key_map :: inline proc(x: i32) -> (res: mu.Key, ok: bool) {
+					ok = true;
+					switch x {
+						case cast(i32)sdl.SDLK_LSHIFT:    res = .SHIFT;
+						case cast(i32)sdl.SDLK_RSHIFT:    res = .SHIFT;
+						case cast(i32)sdl.SDLK_LCTRL:     res = .CTRL;
+						case cast(i32)sdl.SDLK_RCTRL:     res = .CTRL;
+						case cast(i32)sdl.SDLK_LALT:      res = .ALT;
+						case cast(i32)sdl.SDLK_RALT:      res = .ALT;
+						case cast(i32)sdl.SDLK_RETURN:    res = .RETURN;
+						case cast(i32)sdl.SDLK_BACKSPACE: res = .BACKSPACE;
+						case: ok = false;
+					}
+					return;
+				}
+				if key, ok := key_map(e.key.keysym.sym); ok {
+					switch {
+					case e.type == .Key_Down: mu.input_keydown(ctx, key);
+					case e.type == .Key_Up:   mu.input_keyup(ctx, key);
+					}
+				}
 			}
 		}
 
@@ -46,24 +94,43 @@ main :: proc() {
 		process_frame(ctx);
 
 		/* render */
-		// r_clear(mu.color(bg[0], bg[1], bg[2], 255));
-		// cmd: ^Command = ---;
-		// for mu.next_command(ctx, &cmd) != 0 {
-		// 	switch cmd.type {
-		// 	case TEXT: r_draw_text(cmd.text.str, cmd.text.pos, cmd.text.color);
-		// 	case RECT: r_draw_rect(cmd.rect.rect, cmd.rect.color);
-		// 	case ICON: r_draw_icon(cmd.icon.id, cmd.icon.rect, cmd.icon.color);
-		// 	case CLIP: r_set_clip_rect(cmd.clip.rect);
-		// 	}
-		// }
+		r_clear(mu.Color{bg[0], bg[1], bg[2], 255});
+		cmd: ^mu.Command;
+		for mu.next_command(ctx, &cmd) {
+			switch cmd.type {
+			case .TEXT: r_draw_text(cmd.text.str, cmd.text.pos, cmd.text.color);
+			case .RECT: r_draw_rect(cmd.rect.rect, cmd.rect.color);
+			case .ICON: r_draw_icon(cmd.icon.id, cmd.icon.rect, cmd.icon.color);
+			case .CLIP: r_set_clip_rect(cmd.clip.rect);
+			case .JUMP: unreachable(); /* handled internally by next_command() */
+			}
+		}
+
+		//r_test();
+
 		r_present();
+	} // main_loop
+
+	sdl.quit();
+}
+
+	@static cnt: mu.Container;
+process_frame :: proc(ctx: ^mu.Context) {
+
+	mu.begin(ctx);
+	if mu.begin_window(ctx, &cnt, "test window") {
+		mu.end_window(ctx);
 	}
+
+	// test_window(ctx);
+	// log_window(ctx);
+	// style_window(ctx);
+	mu.end(ctx);
 }
 
 /*
 static  char logbuf[64000];
 static   int logbuf_updated = 0;
-static float bg[3] = { 90, 95, 100 };
 
 
 static void write_log(const char *text) {
@@ -275,52 +342,4 @@ static void style_window(mu_Context *ctx) {
 	mu_end_window(ctx);
   }
 }
-
-
-static void process_frame(mu_Context *ctx) {
-  mu_begin(ctx);
-  test_window(ctx);
-  log_window(ctx);
-  style_window(ctx);
-  mu_end(ctx);
-}
-
-
-
-
 */
-
-process_frame :: proc(ctx: ^mu.Context) {
-	// mu.begin(ctx);
-	// test_window(ctx);
-	// log_window(ctx);
-	// style_window(ctx);
-	// mu.end(ctx);
-}
-
-
-
-@(private="file")
-key_map :: inline proc(x: i32) -> i32 {
-	switch x {
-	case cast(i32)sdl.SDLK_LSHIFT:    return cast(i32)mu.Key.SHIFT;
-	case cast(i32)sdl.SDLK_RSHIFT:    return cast(i32)mu.Key.SHIFT;
-	case cast(i32)sdl.SDLK_LCTRL:     return cast(i32)mu.Key.CTRL;
-	case cast(i32)sdl.SDLK_RCTRL:     return cast(i32)mu.Key.CTRL;
-	case cast(i32)sdl.SDLK_LALT:      return cast(i32)mu.Key.ALT;
-	case cast(i32)sdl.SDLK_RALT:      return cast(i32)mu.Key.ALT;
-	case cast(i32)sdl.SDLK_RETURN:    return cast(i32)mu.Key.RETURN;
-	case cast(i32)sdl.SDLK_BACKSPACE: return cast(i32)mu.Key.BACKSPACE;
-	case: return 0;
-	}
-}
-
-@(private="file")
-button_map :: inline proc(x: i32) -> i32 {
-	switch x {
-	case cast(i32)sdl.Mousecode.Left:   return cast(i32)mu.Mouse.LEFT;
-	case cast(i32)sdl.Mousecode.Right:  return cast(i32)mu.Mouse.RIGHT;
-	case cast(i32)sdl.Mousecode.Middle: return cast(i32)mu.Mouse.MIDDLE;
-	case: return 0;
-	}
-}

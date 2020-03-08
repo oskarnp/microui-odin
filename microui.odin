@@ -66,7 +66,6 @@ Command_Type :: enum i32 {
 	RECT,
 	TEXT,
 	ICON,
-	MAX
 }
 
 Color_Type :: enum {
@@ -90,8 +89,7 @@ Icon :: enum i32 {
 	CLOSE = 1,
 	CHECK,
 	COLLAPSED,
-	EXPANDED,
-	MAX
+	EXPANDED
 }
 
 Res :: enum {
@@ -147,7 +145,7 @@ Base_Command :: struct { type: Command_Type, size: int }
 Jump_Command :: struct { using base: Base_Command, dst: rawptr }
 Clip_Command :: struct { using base: Base_Command, rect: Rect }
 Rect_Command :: struct { using base: Base_Command, rect: Rect, color: Color }
-Text_Command :: struct { using base: Base_Command, font: Font, pos: Vec2, color: Color, str: [1]u8, }
+Text_Command :: struct { using base: Base_Command, font: Font, pos: Vec2, color: Color, str: string /* + string data (VLA) */ }
 Icon_Command :: struct { using base: Base_Command, rect: Rect, id: Icon, color: Color }
 
 Command :: struct #raw_union {
@@ -329,7 +327,7 @@ end :: proc(ctx: ^Context) {
 
 	/* sort root containers by zindex */
 	n := ctx.root_list.idx;
-	sort.quick_sort_proc(ctx.root_list.items[:], proc(a, b: ^Container) -> int {
+	sort.quick_sort_proc(ctx.root_list.items[:n], proc(a, b: ^Container) -> int {
 		return int(a.zindex) - int(b.zindex);
 	});
 
@@ -369,13 +367,18 @@ hash :: proc(hash: ^Id, data: rawptr, size: int) {
 	}
 }
 
-get_id :: proc(ctx: ^Context, data: rawptr, size: int) -> Id {
+get_id_string :: proc(ctx: ^Context, str: string) -> Id {
+	raw_str := transmute(mem.Raw_String) str;
+	return get_id_buffer(ctx, raw_str.data, raw_str.len);
+}
+get_id_buffer :: proc(ctx: ^Context, data: rawptr, size: int) -> Id {
 	idx := ctx.id_stack.idx;
 	res := (idx > 0) ? ctx.id_stack.items[idx - 1] : HASH_INITIAL;
 	hash(&res, data, size);
 	ctx.last_id = res;
 	return res;
 }
+get_id :: proc{get_id_buffer, get_id_string};
 
 push_id :: proc(ctx: ^Context, data: rawptr, size: int) {
 	push(&ctx.id_stack, get_id(ctx, data, size));
@@ -416,9 +419,9 @@ push_layout :: proc(ctx: ^Context, body: Rect, scroll: Vec2) {
 }
 
 @private push_container :: proc(ctx: ^Context, cnt: ^Container) {
-	cnt := cnt;
+	cntaddr := uintptr(cnt);
 	push(&ctx.container_stack, cnt);
-	push_id(ctx, &cnt, size_of(^Container));
+	push_id(ctx, &cntaddr, size_of(cntaddr));
 }
 
 @private pop_container :: proc(ctx: ^Context) {
@@ -544,13 +547,15 @@ draw_text :: proc(ctx: ^Context, font: Font, str: string, pos: Vec2, color: Colo
 	if clipped == .ALL  do return;
 	if clipped == .PART do set_clip(ctx, get_clip_rect(ctx));
 	/* add command */
-	raw_str := transmute(mem.Raw_String) str;
-	cmd := push_command(ctx, .TEXT, size_of(Text_Command) + raw_str.len);
-	runtime.mem_copy(&cmd.text.str[0], raw_str.data, raw_str.len);
-	cmd.text.str[raw_str.len] = 0;
-	cmd.text.pos = pos;
-	cmd.text.color = color;
-	cmd.text.font = font;
+	text_cmd := cast(^Text_Command) push_command(ctx, .TEXT, size_of(Text_Command) + len(str));
+	text_cmd.pos = pos;
+	text_cmd.color = color;
+	text_cmd.font = font;
+	/* copy string */
+	dst_raw_str := transmute(mem.Raw_String) text_cmd.str;
+	dst_raw_str.data = cast(^byte) mem.ptr_offset(text_cmd, 1);
+	dst_raw_str.len = len(str);
+	runtime.mem_copy(dst_raw_str.data, (transmute(mem.Raw_String)str).data, len(str));
 	/* reset clipping if it was set */
 	if clipped != .NONE do set_clip(ctx, unclipped_rect);
 }
@@ -669,8 +674,7 @@ layout_next :: proc(ctx: ^Context) -> (res: Rect) {
 **============================================================================*/
 
 @private in_hover_root :: proc(ctx: ^Context) -> bool {
-	i := ctx.container_stack.idx;
-	for ; i > 0; i -= 1 {
+	for i := ctx.container_stack.idx - 1; i > 0; i -= 1 {
 		if ctx.container_stack.items[i] == ctx.last_hover_root do return true;
 		/* only root containers have their `head` field set; stop searching if we've
 		** reached the current root container */
@@ -704,17 +708,24 @@ draw_control_text :: proc(ctx: ^Context, str: string, rect: Rect, colorid: Color
 }
 
 mouse_over :: proc(ctx: ^Context, rect: Rect) -> bool {
-	return rect_overlaps_vec2(rect, ctx.mouse_pos) &&
-           rect_overlaps_vec2(get_clip_rect(ctx), ctx.mouse_pos) &&
-           in_hover_root(ctx);
+	b1 := rect_overlaps_vec2(rect, ctx.mouse_pos);
+	b2 := rect_overlaps_vec2(get_clip_rect(ctx), ctx.mouse_pos);
+	b3 := in_hover_root(ctx);
+	fmt.println("mouseover",b1,b2,b3);
+	return b1 && b2 && b3;
 }
 
 update_control :: proc(ctx: ^Context, id: Id, rect: Rect, opt: Opt_Bits) {
 	mouseover := mouse_over(ctx, rect);
 
+	fmt.println("update_control", mouseover, card(ctx.mouse_down_bits));
+
 	if ctx.focus == id do ctx.updated_focus = true;
 	if .NOINTERACT in opt do return;
-	if mouseover && card(ctx.mouse_down_bits) == 0 do ctx.hover = id;
+	if mouseover && card(ctx.mouse_down_bits) == 0 {
+		ctx.hover = id;
+		fmt.println("hover changed",id);
+	}
 
 	if ctx.focus == id {
 		if card(ctx.mouse_pressed_bits) != 0 && !mouseover do set_focus(ctx, 0);
@@ -731,7 +742,6 @@ update_control :: proc(ctx: ^Context, id: Id, rect: Rect, opt: Opt_Bits) {
 }
 
 /*
-
 void mu_text(mu_Context *ctx, const char *text) {
   const char *start, *end, *p = text;
   int width = -1;
@@ -756,7 +766,41 @@ void mu_text(mu_Context *ctx, const char *text) {
   } while (*end);
   mu_layout_end_column(ctx);
 }
+*/
 
+/*
+text :: proc(ctx: ^Context, text: string) {
+	font  := ctx.style.font;
+	color := ctx.style.colors[.TEXT];
+	layout_begin_column(ctx);
+	layout_row(ctx, 1, []i32{-1}, ctx.text_height(font));
+
+	start, end, p: []u8 = text, text, text;
+	for {
+		r := layout_next(ctx);
+		w := 0;
+		start, end = p, p;
+		for {
+			switch e := strings.index_any(p, " \n"), e {
+			case < 0:
+			case:
+			}
+
+			w += ctx.text_width(font, word[:e]);
+
+			if w > r.w && end != start do break;
+			w += ctx.text_width(font, p, 1);
+			end = p++;
+		} while (*end && *end != '\n');
+		draw_text(ctx, font, start, end - start, Vec2{r.x, r.y}, color);
+		p = end + 1;
+		if !end^ do break;
+	}
+	layout_end_column(ctx);
+}
+*/
+
+/*
 
 void mu_label(mu_Context *ctx, const char *text) {
   mu_draw_control_text(ctx, text, mu_layout_next(ctx), MU_COLOR_TEXT, 0);
@@ -1025,198 +1069,222 @@ void mu_end_treenode(mu_Context *ctx) {
   get_layout(ctx)->indent -= ctx->style->indent;
   mu_pop_id(ctx);
 }
+*/
 
+@private vscrollbar :: proc(ctx: ^Context, cnt: ^Container, b: ^Rect, cs: Vec2) {
+	/* only add scrollbar if content size is larger than body */
+	maxscroll := cs.y - b.h;
+	if maxscroll > 0 && b.h > 0 {
+		id := get_id(ctx, "!scrollbarv");
 
-#define scrollbar(ctx, cnt, b, cs, x, y, w, h)                              \
-  do {                                                                      \
-	/* only add scrollbar if content size is larger than body */            \
-	int maxscroll = cs.y - b->h;                                            \
-																			\
-	if (maxscroll > 0 && b->h > 0) {                                        \
-	  mu_Rect base, thumb;                                                  \
-	  mu_Id id = mu_get_id(ctx, "!scrollbar" #y, 11);                       \
-																			\
-	  /* get sizing / positioning */                                        \
-	  base = *b;                                                            \
-	  base.x = b->x + b->w;                                                 \
-	  base.w = ctx->style->scrollbar_size;                                  \
-																			\
-	  /* handle input */                                                    \
-	  mu_update_control(ctx, id, base, 0);                                  \
-	  if (ctx->focus == id && ctx->mouse_down == MU_MOUSE_LEFT) {           \
-		cnt->scroll.y += ctx->mouse_delta.y * cs.y / base.h;                \
-	  }                                                                     \
-	  /* clamp scroll to limits */                                          \
-	  cnt->scroll.y = mu_clamp(cnt->scroll.y, 0, maxscroll);                \
-																			\
-	  /* draw base and thumb */                                             \
-	  ctx->draw_frame(ctx, base, MU_COLOR_SCROLLBASE);                      \
-	  thumb = base;                                                         \
-	  thumb.h = mu_max(ctx->style->thumb_size, base.h * b->h / cs.y);       \
-	  thumb.y += cnt->scroll.y * (base.h - thumb.h) / maxscroll;            \
-	  ctx->draw_frame(ctx, thumb, MU_COLOR_SCROLLTHUMB);                    \
-																			\
-	  /* set this as the scroll_target (will get scrolled on mousewheel) */ \
-	  /* if the mouse is over it */                                         \
-	  if (mu_mouse_over(ctx, *b)) { ctx->scroll_target = cnt; }             \
-	} else {                                                                \
-	  cnt->scroll.y = 0;                                                    \
-	}                                                                       \
-  } while (0)
+		/* get sizing / positioning */
+		base := b^;
+		base.x = b.x + b.w;
+		base.w = ctx.style.scrollbar_size;
 
+		/* handle input */
+		update_control(ctx, id, base, {});
+		if ctx.focus == id && .LEFT in ctx.mouse_down_bits {
+			cnt.scroll.y += ctx.mouse_delta.y * cs.y / base.h;
+		}
+		/* clamp scroll to limits */
+		cnt.scroll.y = clamp(cnt.scroll.y, 0, maxscroll);
 
-static void scrollbars(mu_Context *ctx, mu_Container *cnt, mu_Rect *body) {
-  int sz = ctx->style->scrollbar_size;
-  mu_Vec2 cs = cnt->content_size;
-  cs.x += ctx->style->padding * 2;
-  cs.y += ctx->style->padding * 2;
-  mu_push_clip_rect(ctx, *body);
-  /* resize body to make room for scrollbars */
-  if (cs.y > cnt->body.h) { body->w -= sz; }
-  if (cs.x > cnt->body.w) { body->h -= sz; }
-  /* to create a horizontal or vertical scrollbar almost-identical code is
-  ** used; only the references to `x|y` `w|h` need to be switched */
-  scrollbar(ctx, cnt, body, cs, x, y, w, h);
-  scrollbar(ctx, cnt, body, cs, y, x, h, w);
-  mu_pop_clip_rect(ctx);
+		/* draw base and thumb */
+		ctx.draw_frame(ctx, base, .SCROLLBASE);
+		thumb := base;
+		thumb.h = max(ctx.style.thumb_size, base.h * b.h / cs.y);
+		thumb.y += cnt.scroll.y * (base.h - thumb.h) / maxscroll;
+		ctx.draw_frame(ctx, thumb, .SCROLLTHUMB);
+
+		/* set this as the scroll_target (will get scrolled on mousewheel) */
+		/* if the mouse is over it */
+		if mouse_over(ctx, b^) do ctx.scroll_target = cnt;
+	} else {
+		cnt.scroll.y = 0;
+	}
 }
 
+@private hscrollbar :: proc(ctx: ^Context, cnt: ^Container, b: ^Rect, cs: Vec2) {
+	/* only add scrollbar if content size is larger than body */
+	maxscroll := cs.x - b.w;
+	if maxscroll > 0 && b.w > 0 {
+		id := get_id(ctx, "!scrollbarh");
 
-static void push_container_body(
-  mu_Context *ctx, mu_Container *cnt, mu_Rect body, int opt
-) {
-  if (~opt & MU_OPT_NOSCROLL) { scrollbars(ctx, cnt, &body); }
-  push_layout(ctx, expand_rect(body, -ctx->style->padding), cnt->scroll);
-  cnt->body = body;
+		/* get sizing / positioning */
+		base := b^;
+		base.y = b.y + b.h;
+		base.h = ctx.style.scrollbar_size;
+
+		/* handle input */
+		update_control(ctx, id, base, {});
+		if ctx.focus == id && .LEFT in ctx.mouse_down_bits {
+			cnt.scroll.x += ctx.mouse_delta.x * cs.x / base.w;
+		}
+		/* clamp scroll to limits */
+		cnt.scroll.x = clamp(cnt.scroll.x, 0, maxscroll);
+
+		/* draw base and thumb */
+		ctx.draw_frame(ctx, base, .SCROLLBASE);
+		thumb := base;
+		thumb.w = max(ctx.style.thumb_size, base.w * b.w / cs.x);
+		thumb.x += cnt.scroll.x * (base.w - thumb.w) / maxscroll;
+		ctx.draw_frame(ctx, thumb, .SCROLLTHUMB);
+
+		/* set this as the scroll_target (will get scrolled on mousewheel) */
+		/* if the mouse is over it */
+		if mouse_over(ctx, b^) do ctx.scroll_target = cnt;
+	} else {
+		cnt.scroll.x = 0;
+	}
 }
 
-
-static void begin_root_container(mu_Context *ctx, mu_Container *cnt) {
-  push_container(ctx, cnt);
-
-  /* push container to roots list and push head command */
-  push(ctx->root_list, cnt);
-  cnt->head = push_jump(ctx, NULL);
-
-  /* set as hover root if the mouse is overlapping this container and it has a
-  ** higher zindex than the current hover root */
-  if (rect_overlaps_vec2(cnt->rect, ctx->mouse_pos) &&
-	  (!ctx->hover_root || cnt->zindex > ctx->hover_root->zindex))
-  {
-	ctx->hover_root = cnt;
-  }
-  /* clipping is reset here in case a root-container is made within
-  ** another root-containers's begin/end block; this prevents the inner
-  ** root-container being clipped to the outer */
-  push(ctx->clip_stack, unclipped_rect);
+@private scrollbars :: proc(ctx: ^Context, cnt: ^Container, body: ^Rect) {
+	sz := ctx.style.scrollbar_size;
+	cs := cnt.content_size;
+	cs.x += ctx.style.padding * 2;
+	cs.y += ctx.style.padding * 2;
+	push_clip_rect(ctx, body^);
+	/* resize body to make room for scrollbars */
+	if cs.y > cnt.body.h do body.w -= sz;
+	if cs.x > cnt.body.w do body.h -= sz;
+	/* to create a horizontal or vertical scrollbar almost-identical code is
+	** used; only the references to `x|y` `w|h` need to be switched */
+	// NOTE(oskar): However, Odin doesn't have macros so unfortunately need to duplicate code here
+	vscrollbar(ctx, cnt, body, cs);
+	hscrollbar(ctx, cnt, body, cs);
+	pop_clip_rect(ctx);
 }
 
-
-static void end_root_container(mu_Context *ctx) {
-  /* push tail 'goto' jump command and set head 'skip' command. the final steps
-  ** on initing these are done in mu_end() */
-  mu_Container *cnt = mu_get_container(ctx);
-  cnt->tail = push_jump(ctx, NULL);
-  cnt->head->jump.dst = ctx->command_list.items + ctx->command_list.idx;
-  /* pop base clip rect and container */
-  mu_pop_clip_rect(ctx);
-  pop_container(ctx);
+@private push_container_body :: proc(ctx: ^Context, cnt: ^Container, body: Rect, opt: Opt_Bits) {
+	body := body;
+	if .NOSCROLL not_in opt do scrollbars(ctx, cnt, &body);
+	push_layout(ctx, expand_rect(body, -ctx.style.padding), cnt.scroll);
+	cnt.body = body;
 }
 
+@private begin_root_container :: proc(ctx: ^Context, cnt: ^Container) {
+	push_container(ctx, cnt);
 
-int mu_begin_window_ex(mu_Context *ctx, mu_Container *cnt, const char *title,
-  int opt)
-{
-  mu_Rect rect, body, titlerect;
+	/* push container to roots list and push head command */
+	push(&ctx.root_list, cnt);
+	cnt.head = push_jump(ctx, nil);
 
-  if (!cnt->inited) { mu_init_window(ctx, cnt, opt); }
-  if (!cnt->open) { return 0; }
-
-  begin_root_container(ctx, cnt);
-  rect = cnt->rect;
-  body = rect;
-
-  /* draw frame */
-  if (~opt & MU_OPT_NOFRAME) {
-	ctx->draw_frame(ctx, rect, MU_COLOR_WINDOWBG);
-  }
-
-  /* do title bar */
-  titlerect = rect;
-  titlerect.h = ctx->style->title_height;
-  if (~opt & MU_OPT_NOTITLE) {
-	ctx->draw_frame(ctx, titlerect, MU_COLOR_TITLEBG);
-
-	/* do title text */
-	if (~opt & MU_OPT_NOTITLE) {
-	  mu_Id id = mu_get_id(ctx, "!title", 6);
-	  mu_update_control(ctx, id, titlerect, opt);
-	  mu_draw_control_text(ctx, title, titlerect, MU_COLOR_TITLETEXT, opt);
-	  if (id == ctx->focus && ctx->mouse_down == MU_MOUSE_LEFT) {
-		cnt->rect.x += ctx->mouse_delta.x;
-		cnt->rect.y += ctx->mouse_delta.y;
-	  }
-	  body.y += titlerect.h;
-	  body.h -= titlerect.h;
+	/* set as hover root if the mouse is overlapping this container and it has a
+	** higher zindex than the current hover root */
+	if rect_overlaps_vec2(cnt.rect, ctx.mouse_pos) && (ctx.hover_root == nil || cnt.zindex > ctx.hover_root.zindex) {
+		ctx.hover_root = cnt;
+		fmt.println("begin_root_container, hover root now", ctx.hover_root);
 	}
 
-	/* do `close` button */
-	if (~opt & MU_OPT_NOCLOSE) {
-	  mu_Id id = mu_get_id(ctx, "!close", 6);
-	  mu_Rect r = mu_rect(
-		titlerect.x + titlerect.w - titlerect.h,
-		titlerect.y, titlerect.h, titlerect.h);
-	  titlerect.w -= r.w;
-	  mu_draw_icon(ctx, MU_ICON_CLOSE, r, ctx->style->colors[MU_COLOR_TITLETEXT]);
-	  mu_update_control(ctx, id, r, opt);
-	  if (ctx->mouse_pressed == MU_MOUSE_LEFT && id == ctx->focus) {
-		cnt->open = 0;
-	  }
+	/* clipping is reset here in case a root-container is made within
+	** another root-containers's begin/end block; this prevents the inner
+	** root-container being clipped to the outer */
+	push(&ctx.clip_stack, unclipped_rect);
+}
+
+@private end_root_container :: proc(ctx: ^Context) {
+	/* push tail 'goto' jump command and set head 'skip' command. the final steps
+	** on initing these are done in mu_end() */
+	cnt := get_container(ctx);
+	cnt.tail = push_jump(ctx, nil);
+	cnt.head.jump.dst = &ctx.command_list.items[ctx.command_list.idx];
+	/* pop base clip rect and container */
+	pop_clip_rect(ctx);
+	pop_container(ctx);
+}
+
+_is_mouse_pressed :: inline proc(ctx: ^Context) -> bool {
+	return card(ctx.mouse_pressed_bits) != 0;
+}
+
+begin_window_ex :: proc(ctx: ^Context, cnt: ^Container, title: string, opt: Opt_Bits) -> bool {
+	if !cnt.inited do init_window(ctx, cnt, opt);
+	if !cnt.open do return false;
+
+	begin_root_container(ctx, cnt);
+	rect := cnt.rect;
+	body := rect;
+
+	/* draw frame */
+	if .NOFRAME not_in opt {
+		ctx.draw_frame(ctx, rect, .WINDOWBG);
 	}
-  }
 
-  push_container_body(ctx, cnt, body, opt);
+	/* do title bar */
+	titlerect := rect;
+	titlerect.h = ctx.style.title_height;
+	if .NOTITLE not_in opt {
+		ctx.draw_frame(ctx, titlerect, .TITLEBG);
 
-  /* do `resize` handle */
-  if (~opt & MU_OPT_NORESIZE) {
-	int sz = ctx->style->title_height;
-	mu_Id id = mu_get_id(ctx, "!resize", 7);
-	mu_Rect r = mu_rect(rect.x + rect.w - sz, rect.y + rect.h - sz, sz, sz);
-	mu_update_control(ctx, id, r, opt);
-	if (id == ctx->focus && ctx->mouse_down == MU_MOUSE_LEFT) {
-	  cnt->rect.w = mu_max(96, cnt->rect.w + ctx->mouse_delta.x);
-	  cnt->rect.h = mu_max(64, cnt->rect.h + ctx->mouse_delta.y);
+		/* do title text */
+		if .NOTITLE not_in opt {
+			id := get_id(ctx, "!title");
+			update_control(ctx, id, titlerect, opt);
+			draw_control_text(ctx, title, titlerect, .TITLETEXT, opt);
+			if id == ctx.focus && ctx.mouse_down_bits == {.LEFT} {
+				cnt.rect.x += ctx.mouse_delta.x;
+				cnt.rect.y += ctx.mouse_delta.y;
+			}
+			body.y += titlerect.h;
+			body.h -= titlerect.h;
+		}
+
+		/* do `close` button */
+		if .NOCLOSE not_in opt {
+			id := get_id(ctx, "!close");
+			r := Rect{titlerect.x + titlerect.w - titlerect.h, titlerect.y, titlerect.h, titlerect.h};
+			titlerect.w -= r.w;
+			draw_icon(ctx, .CLOSE, r, ctx.style.colors[.TITLETEXT]);
+			update_control(ctx, id, r, opt);
+			if (.LEFT in ctx.mouse_pressed_bits) && id == ctx.focus {
+				cnt.open = false;
+				fmt.println("Close pressed!");
+			}
+		}
 	}
-  }
 
-  /* resize to content size */
-  if (opt & MU_OPT_AUTOSIZE) {
-	mu_Rect r = get_layout(ctx)->body;
-	cnt->rect.w = cnt->content_size.x + (cnt->rect.w - r.w);
-	cnt->rect.h = cnt->content_size.y + (cnt->rect.h - r.h);
-  }
+	push_container_body(ctx, cnt, body, opt);
 
-  /* close if this is a popup window and elsewhere was clicked */
-  if (opt & MU_OPT_POPUP && ctx->mouse_pressed && ctx->last_hover_root != cnt) {
-	cnt->open = 0;
-  }
+	/* do `resize` handle */
+	if .NORESIZE not_in opt {
+		sz := ctx.style.title_height;
+		id := get_id(ctx, "!resize");
+		r := Rect{rect.x + rect.w - sz, rect.y + rect.h - sz, sz, sz};
+		update_control(ctx, id, r, opt);
+		if id == ctx.focus && .LEFT in ctx.mouse_down_bits {
+			cnt.rect.w = max(96, cnt.rect.w + ctx.mouse_delta.x);
+			cnt.rect.h = max(64, cnt.rect.h + ctx.mouse_delta.y);
+		}
+	}
 
-  mu_push_clip_rect(ctx, cnt->body);
-  return MU_RES_ACTIVE;
+	/* resize to content size */
+	if .AUTOSIZE in opt {
+		r := get_layout(ctx).body;
+		cnt.rect.w = cnt.content_size.x + (cnt.rect.w - r.w);
+		cnt.rect.h = cnt.content_size.y + (cnt.rect.h - r.h);
+	}
+
+	/* close if this is a popup window and elsewhere was clicked */
+	if .POPUP in opt && _is_mouse_pressed(ctx) && ctx.last_hover_root != cnt {
+		cnt.open = false;
+	}
+
+	push_clip_rect(ctx, cnt.body);
+	return true;
+}
+
+begin_window :: proc(ctx: ^Context, cnt: ^Container, title: string) -> bool {
+	return begin_window_ex(ctx, cnt, title, {});
+}
+
+end_window :: proc(ctx: ^Context) {
+	pop_clip_rect(ctx);
+	end_root_container(ctx);
 }
 
 
-int mu_begin_window(mu_Context *ctx, mu_Container *cnt, const char *title) {
-  return mu_begin_window_ex(ctx, cnt, title, 0);
-}
-
-
-void mu_end_window(mu_Context *ctx) {
-  mu_pop_clip_rect(ctx);
-  end_root_container(ctx);
-}
-
-
+/*
 void mu_open_popup(mu_Context *ctx, mu_Container *cnt) {
   /* set as hover root so popup isn't closed in begin_window_ex()  */
   ctx->last_hover_root = ctx->hover_root = cnt;
