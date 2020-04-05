@@ -686,7 +686,7 @@ layout_next :: proc(ctx: ^Context) -> (res: Rect) {
 **============================================================================*/
 
 @private in_hover_root :: proc(ctx: ^Context) -> bool {
-	for i := ctx.container_stack.idx - 1; i > 0; i -= 1 {
+	for i := ctx.container_stack.idx - 1; i >= 0; i -= 1 {
 		if ctx.container_stack.items[i] == ctx.last_hover_root do return true;
 		/* only root containers have their `head` field set; stop searching if we've
 		** reached the current root container */
