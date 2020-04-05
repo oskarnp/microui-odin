@@ -208,7 +208,9 @@ Context :: struct {
 	/* input state */
 	mouse_pos, last_mouse_pos:           Vec2,
 	mouse_delta, scroll_delta:           Vec2,
-	mouse_down_bits, mouse_pressed_bits: Mouse_Bits,
+	mouse_down_bits:                     Mouse_Bits,
+	mouse_pressed_bits:                  Mouse_Bits,
+	mouse_released_bits:                 Mouse_Bits,
 	key_down_bits, key_pressed_bits:     Key_Bits,
 	_text_store:                         [32] u8,
 	text_input:                          strings.Builder, // uses `_text_store` as backing store with nil_allocator.
@@ -328,6 +330,7 @@ end :: proc(ctx: ^Context) {
 	ctx.key_pressed_bits = {}; // clear
 	strings.reset_builder(&ctx.text_input);
 	ctx.mouse_pressed_bits = {}; // clear
+	ctx.mouse_released_bits = {}; // clear
 	ctx.scroll_delta = Vec2{0, 0};
 	ctx.last_mouse_pos = ctx.mouse_pos;
 
@@ -479,6 +482,7 @@ input_mousedown :: proc(ctx: ^Context, x, y: i32, btn: Mouse) {
 input_mouseup :: proc(ctx: ^Context, x, y: i32, btn: Mouse) {
 	input_mousemove(ctx, x, y);
 	excl(&ctx.mouse_down_bits, btn);
+	incl(&ctx.mouse_released_bits, btn);
 }
 
 input_scroll :: proc(ctx: ^Context, x, y: i32) {
@@ -1130,7 +1134,6 @@ end_treenode :: proc(ctx: ^Context) {
 	** higher zindex than the current hover root */
 	if rect_overlaps_vec2(cnt.rect, ctx.mouse_pos) && (ctx.hover_root == nil || cnt.zindex > ctx.hover_root.zindex) {
 		ctx.hover_root = cnt;
-		fmt.println("begin_root_container, hover root now", ctx.hover_root);
 	}
 
 	/* clipping is reset here in case a root-container is made within
@@ -1189,9 +1192,8 @@ begin_window_ex :: proc(ctx: ^Context, cnt: ^Container, title: string, opt: Opt_
 			titlerect.w -= r.w;
 			draw_icon(ctx, .CLOSE, r, ctx.style.colors[.TITLETEXT]);
 			update_control(ctx, id, r, opt);
-			if (.LEFT in ctx.mouse_pressed_bits) && id == ctx.focus {
+			if .LEFT in ctx.mouse_released_bits && id == ctx.hover {
 				cnt.open = false;
-				fmt.println("Close pressed!");
 			}
 		}
 	}
@@ -1273,5 +1275,6 @@ end_panel :: proc(ctx: ^Context) {
 	pop_container(ctx);
 }
 
-@private mouse_pressed :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_pressed_bits) != 0;
-@private mouse_down    :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_down_bits) != 0;
+@private mouse_released :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_released_bits) != 0;
+@private mouse_pressed  :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_pressed_bits) != 0;
+@private mouse_down     :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_down_bits) != 0;
