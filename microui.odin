@@ -31,19 +31,17 @@ import "core:builtin"
 import "core:strings"
 import "core:reflect"
 
-MU_VERSION :: "1.02";
-
-MU_COMMANDLIST_SIZE     :: (1024 * 256);
-MU_ROOTLIST_SIZE        :: 32;
-MU_CONTAINERSTACK_SIZE  :: 32;
-MU_CLIPSTACK_SIZE       :: 32;
-MU_IDSTACK_SIZE         :: 32;
-MU_LAYOUTSTACK_SIZE     :: 16;
-MU_MAX_WIDTHS           :: 16;
-MU_REAL                 :: f32;
-MU_REAL_FMT             :: "%.3g";
-MU_SLIDER_FMT           :: "%.2f";
-MU_MAX_FMT              :: 127;
+COMMANDLIST_SIZE     :: (1024 * 256);
+ROOTLIST_SIZE        :: 32;
+CONTAINERSTACK_SIZE  :: 32;
+CLIPSTACK_SIZE       :: 32;
+IDSTACK_SIZE         :: 32;
+LAYOUTSTACK_SIZE     :: 16;
+MAX_WIDTHS           :: 16;
+REAL                 :: f32;
+REAL_FMT             :: "%.3g";
+SLIDER_FMT           :: "%.2f";
+MAX_FMT              :: 127;
 
 Clip :: enum {
 	NONE,
@@ -124,7 +122,7 @@ Key :: enum {
 Key_Bits :: bit_set[Key];
 
 Id    :: distinct u32;
-Real  :: MU_REAL;
+Real  :: REAL;
 Font  :: distinct rawptr;
 
 Vec2  :: struct { x, y: i32 }
@@ -151,7 +149,7 @@ Command :: struct #raw_union {
 Layout :: struct {
 	body, next:                 Rect,
 	position, size, max:        Vec2,
-	widths:                     [MU_MAX_WIDTHS] i32,
+	widths:                     [MAX_WIDTHS] i32,
 	items, row_index, next_row: i32,
 	next_type:                  Layout_Type,
 	indent:                     i32,
@@ -196,15 +194,15 @@ Context :: struct {
 	hover_root:                          ^Container,
 	last_hover_root:                     ^Container,
 	scroll_target:                       ^Container,
-	number_buf:                          [MU_MAX_FMT] u8,
+	number_buf:                          [MAX_FMT] u8,
 	number_editing:                      Id,
 	/* stacks */
-	command_list:                        Stack(u8, MU_COMMANDLIST_SIZE),
-	root_list:                           Stack(^Container, MU_ROOTLIST_SIZE),
-	container_stack:                     Stack(^Container, MU_CONTAINERSTACK_SIZE),
-	clip_stack:                          Stack(Rect, MU_CLIPSTACK_SIZE),
-	id_stack:                            Stack(Id, MU_IDSTACK_SIZE),
-	layout_stack:                        Stack(Layout, MU_LAYOUTSTACK_SIZE),
+	command_list:                        Stack(u8, COMMANDLIST_SIZE),
+	root_list:                           Stack(^Container, ROOTLIST_SIZE),
+	container_stack:                     Stack(^Container, CONTAINERSTACK_SIZE),
+	clip_stack:                          Stack(Rect, CLIPSTACK_SIZE),
+	id_stack:                            Stack(Id, IDSTACK_SIZE),
+	layout_stack:                        Stack(Layout, LAYOUTSTACK_SIZE),
 	/* input state */
 	mouse_pos, last_mouse_pos:           Vec2,
 	mouse_delta, scroll_delta:           Vec2,
@@ -509,7 +507,7 @@ input_text :: proc(ctx: ^Context, text: string) {
 
 push_command :: proc(ctx: ^Context, type: Command_Type, size: int) -> ^Command {
 	cmd := transmute(^Command) &ctx.command_list.items[ctx.command_list.idx];
-	expect(ctx.command_list.idx + size < MU_COMMANDLIST_SIZE);
+	expect(ctx.command_list.idx + size < COMMANDLIST_SIZE);
 	cmd.base.type = type;
 	cmd.base.size = size;
 	ctx.command_list.idx += size;
@@ -616,7 +614,7 @@ layout_end_column :: proc(ctx: ^Context) {
 layout_row :: proc(ctx: ^Context, items: i32, widths: []i32, height: i32) {
 	layout := get_layout(ctx);
 	if len(widths) > 0 {
-		expect(items <= MU_MAX_WIDTHS);
+		expect(items <= MAX_WIDTHS);
 		runtime.mem_copy(&layout.widths, &widths[0], int(items) * size_of(widths[0]));
 	}
 	layout.items = items;
@@ -755,12 +753,12 @@ text :: proc(ctx: ^Context, text: string) {
 	/*
 	  const char *start, *end, *p = text;
 	  int width = -1;
-	  mu_Font font = ctx->style->font;
-	  mu_Color color = ctx->style->colors[MU_COLOR_TEXT];
-	  mu_layout_begin_column(ctx);
-	  mu_layout_row(ctx, 1, &width, ctx->text_height(font));
+	  Font font = ctx->style->font;
+	  Color color = ctx->style->colors[COLOR_TEXT];
+	  layout_begin_column(ctx);
+	  layout_row(ctx, 1, &width, ctx->text_height(font));
 	  do {
-		mu_Rect r = mu_layout_next(ctx);
+		Rect r = layout_next(ctx);
 		int w = 0;
 		start = end = p;
 		do {
@@ -771,10 +769,10 @@ text :: proc(ctx: ^Context, text: string) {
 		  w += ctx->text_width(font, p, 1);
 		  end = p++;
 		} while (*end && *end != '\n');
-		mu_draw_text(ctx, font, start, end - start, mu_vec2(r.x, r.y), color);
+		draw_text(ctx, font, start, end - start, vec2(r.x, r.y), color);
 		p = end + 1;
 	  } while (*end);
-	  mu_layout_end_column(ctx);
+	  layout_end_column(ctx);
 	*/
 }
 
@@ -833,7 +831,7 @@ textbox_raw :: proc(ctx: ^Context, buf: string, id: Id, r: Rect, opt: Opt_Bits =
 			memcpy(buf + len, ctx->text_input, n);
 			len += n;
 			buf[len] = '\0';
-			res |= MU_RES_CHANGE;
+			res |= RES_CHANGE;
 		}
 		/* handle backspace */
 		if .BACKSPACE in ctx.key_pressed_bits && len > 0 {
@@ -841,7 +839,7 @@ textbox_raw :: proc(ctx: ^Context, buf: string, id: Id, r: Rect, opt: Opt_Bits =
 			// /* skip utf-8 continuation bytes */
 			// while ((buf[--len] & 0xc0) == 0x80 && len > 0);
 			// buf[len] = '\0';
-			// res |= MU_RES_CHANGE;
+			// res |= RES_CHANGE;
 		}
 		/* handle return */
 		if .RETURN in ctx.key_pressed_bits {
@@ -874,18 +872,18 @@ textbox_raw :: proc(ctx: ^Context, buf: string, id: Id, r: Rect, opt: Opt_Bits =
 
 /*
 
-static int number_textbox(mu_Context *ctx, mu_Real *value, mu_Rect r, mu_Id id) {
-  if (ctx->mouse_pressed == MU_MOUSE_LEFT &&
-	  ctx->key_down & MU_KEY_SHIFT &&
+static int number_textbox(Context *ctx, Real *value, Rect r, Id id) {
+  if (ctx->mouse_pressed == MOUSE_LEFT &&
+	  ctx->key_down & KEY_SHIFT &&
 	  ctx->hover == id)
   {
 	ctx->number_editing = id;
-	sprintf(ctx->number_buf, MU_REAL_FMT, *value);
+	sprintf(ctx->number_buf, REAL_FMT, *value);
   }
   if (ctx->number_editing == id) {
-	int res = mu_textbox_raw(
+	int res = textbox_raw(
 	  ctx, ctx->number_buf, sizeof(ctx->number_buf), id, r, 0);
-	if (res & MU_RES_SUBMIT || ctx->focus != id) {
+	if (res & RES_SUBMIT || ctx->focus != id) {
 	  *value = strtod(ctx->number_buf, NULL);
 	  ctx->number_editing = 0;
 	} else {
@@ -896,97 +894,97 @@ static int number_textbox(mu_Context *ctx, mu_Real *value, mu_Rect r, mu_Id id) 
 }
 
 
-int mu_textbox_ex(mu_Context *ctx, char *buf, int bufsz, int opt) {
-  mu_Id id = mu_get_id(ctx, &buf, sizeof(buf));
-  mu_Rect r = mu_layout_next(ctx);
-  return mu_textbox_raw(ctx, buf, bufsz, id, r, opt);
+int textbox_ex(Context *ctx, char *buf, int bufsz, int opt) {
+  Id id = get_id(ctx, &buf, sizeof(buf));
+  Rect r = layout_next(ctx);
+  return textbox_raw(ctx, buf, bufsz, id, r, opt);
 }
 
 
-int mu_textbox(mu_Context *ctx, char *buf, int bufsz) {
-  return mu_textbox_ex(ctx, buf, bufsz, 0);
+int textbox(Context *ctx, char *buf, int bufsz) {
+  return textbox_ex(ctx, buf, bufsz, 0);
 }
 
 
-int mu_slider_ex(mu_Context *ctx, mu_Real *value, mu_Real low, mu_Real high,
-  mu_Real step, const char *fmt, int opt)
+int slider_ex(Context *ctx, Real *value, Real low, Real high,
+  Real step, const char *fmt, int opt)
 {
-  char buf[MU_MAX_FMT + 1];
-  mu_Rect thumb;
+  char buf[MAX_FMT + 1];
+  Rect thumb;
   int w, res = 0;
-  mu_Real normalized, last = *value, v = last;
-  mu_Id id = mu_get_id(ctx, &value, sizeof(value));
-  mu_Rect base = mu_layout_next(ctx);
+  Real normalized, last = *value, v = last;
+  Id id = get_id(ctx, &value, sizeof(value));
+  Rect base = layout_next(ctx);
 
   /* handle text input mode */
   if (number_textbox(ctx, &v, base, id)) { return res; }
 
   /* handle normal mode */
-  mu_update_control(ctx, id, base, opt);
+  update_control(ctx, id, base, opt);
 
   /* handle input */
-  if (ctx->focus == id && ctx->mouse_down == MU_MOUSE_LEFT) {
-	v = low + ((mu_Real) (ctx->mouse_pos.x - base.x) / base.w) * (high - low);
+  if (ctx->focus == id && ctx->mouse_down == MOUSE_LEFT) {
+	v = low + ((Real) (ctx->mouse_pos.x - base.x) / base.w) * (high - low);
 	if (step) { v = ((long) ((v + step/2) / step)) * step; }
   }
   /* clamp and store value, update res */
-  *value = v = mu_clamp(v, low, high);
-  if (last != v) { res |= MU_RES_CHANGE; }
+  *value = v = clamp(v, low, high);
+  if (last != v) { res |= RES_CHANGE; }
 
   /* draw base */
-  mu_draw_control_frame(ctx, id, base, MU_COLOR_BASE, opt);
+  draw_control_frame(ctx, id, base, COLOR_BASE, opt);
   /* draw thumb */
   w = ctx->style->thumb_size;
   normalized = (v - low) / (high - low);
-  thumb = mu_rect(base.x + normalized * (base.w - w), base.y, w, base.h);
-  mu_draw_control_frame(ctx, id, thumb, MU_COLOR_BUTTON, opt);
+  thumb = rect(base.x + normalized * (base.w - w), base.y, w, base.h);
+  draw_control_frame(ctx, id, thumb, COLOR_BUTTON, opt);
   /* draw text  */
   sprintf(buf, fmt, v);
-  mu_draw_control_text(ctx, buf, base, MU_COLOR_TEXT, opt);
+  draw_control_text(ctx, buf, base, COLOR_TEXT, opt);
 
   return res;
 }
 
 
-int mu_slider(mu_Context *ctx, mu_Real *value, mu_Real low, mu_Real high) {
-  return mu_slider_ex(ctx, value, low, high, 0, MU_SLIDER_FMT, MU_OPT_ALIGNCENTER);
+int slider(Context *ctx, Real *value, Real low, Real high) {
+  return slider_ex(ctx, value, low, high, 0, SLIDER_FMT, OPT_ALIGNCENTER);
 }
 
 
-int mu_number_ex(mu_Context *ctx, mu_Real *value, mu_Real step,
+int number_ex(Context *ctx, Real *value, Real step,
   const char *fmt,int opt)
 {
-  char buf[MU_MAX_FMT + 1];
+  char buf[MAX_FMT + 1];
   int res = 0;
-  mu_Id id = mu_get_id(ctx, &value, sizeof(value));
-  mu_Rect base = mu_layout_next(ctx);
-  mu_Real last = *value;
+  Id id = get_id(ctx, &value, sizeof(value));
+  Rect base = layout_next(ctx);
+  Real last = *value;
 
   /* handle text input mode */
   if (number_textbox(ctx, value, base, id)) { return res; }
 
   /* handle normal mode */
-  mu_update_control(ctx, id, base, opt);
+  update_control(ctx, id, base, opt);
 
   /* handle input */
-  if (ctx->focus == id && ctx->mouse_down == MU_MOUSE_LEFT) {
+  if (ctx->focus == id && ctx->mouse_down == MOUSE_LEFT) {
 	*value += ctx->mouse_delta.x * step;
   }
   /* set flag if value changed */
-  if (*value != last) { res |= MU_RES_CHANGE; }
+  if (*value != last) { res |= RES_CHANGE; }
 
   /* draw base */
-  mu_draw_control_frame(ctx, id, base, MU_COLOR_BASE, opt);
+  draw_control_frame(ctx, id, base, COLOR_BASE, opt);
   /* draw text  */
   sprintf(buf, fmt, *value);
-  mu_draw_control_text(ctx, buf, base, MU_COLOR_TEXT, opt);
+  draw_control_text(ctx, buf, base, COLOR_TEXT, opt);
 
   return res;
 }
 
 
-int mu_number(mu_Context *ctx, mu_Real *value, mu_Real step) {
-  return mu_number_ex(ctx, value, step, MU_SLIDER_FMT, MU_OPT_ALIGNCENTER);
+int number(Context *ctx, Real *value, Real step) {
+  return number_ex(ctx, value, step, SLIDER_FMT, OPT_ALIGNCENTER);
 }
 
 */
@@ -1144,7 +1142,7 @@ end_treenode :: proc(ctx: ^Context) {
 
 @private end_root_container :: proc(ctx: ^Context) {
 	/* push tail 'goto' jump command and set head 'skip' command. the final steps
-	** on initing these are done in mu_end() */
+	** on initing these are done in end() */
 	cnt := get_container(ctx);
 	cnt.tail = push_jump(ctx, nil);
 	cnt.head.jump.dst = &ctx.command_list.items[ctx.command_list.idx];
