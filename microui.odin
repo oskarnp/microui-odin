@@ -807,7 +807,7 @@ checkbox :: proc(ctx: ^Context, state: ^bool, label: string) -> (res: Res_Bits) 
 	box := Rect{r.x, r.y, r.h, r.h};
 	update_control(ctx, id, r, {});
 	/* handle click */
-	if .LEFT in ctx.mouse_pressed_bits && ctx.focus == id {
+	if .LEFT in ctx.mouse_released_bits && ctx.hover == id {
 		res |= {.CHANGE};
 		state^ = !state^;
 	}
