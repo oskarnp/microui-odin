@@ -34,7 +34,6 @@ main :: proc() {
 		/* handle SDL events */
 		e: sdl.Event = ---;
 		for sdl.poll_event(&e) != 0 {
-			fmt.println(e.type);
 			#partial switch e.type {
 			case .Quit: break main_loop;
 			case .Mouse_Motion: mu.input_mousemove(ctx, e.motion.x, e.motion.y);
