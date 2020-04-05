@@ -114,140 +114,123 @@ main :: proc() {
 	sdl.quit();
 }
 
-	@static cnt: mu.Container;
 process_frame :: proc(ctx: ^mu.Context) {
-
 	mu.begin(ctx);
-	if mu.begin_window(ctx, &cnt, "test window") {
-		mu.end_window(ctx);
-	}
-
-	// test_window(ctx);
-	// log_window(ctx);
-	// style_window(ctx);
+	test_window(ctx);
+	//log_window(ctx);
+	//style_window(ctx);
 	mu.end(ctx);
 }
 
+write_log :: proc(text: string) {
+	// TODO(oskar)
+}
+
+test_window :: proc(ctx: ^mu.Context) {
+	@static window: mu.Container;
+
+	// NOTE(oskar): mu.button() returns Res_Bits and not bool (should fix this)
+	button :: inline proc(ctx: ^mu.Context, label: string) -> bool do return mu.button(ctx, label) == {.SUBMIT};
+
+	/* init window manually so we can set its position and size */
+	if !window.inited {
+		mu.init_window(ctx, &window);
+		window.rect = mu.Rect{40, 40, 300, 450};
+	}
+
+	/* limit window to minimum size */
+	window.rect.w = max(window.rect.w, 240);
+	window.rect.h = max(window.rect.h, 300);
+
+	/* do window */
+	if mu.begin_window(ctx, &window, "Demo Window") {
+		/* window info */
+		@static show_info := false;
+		if mu.header(ctx, &show_info, "Window Info") != {} {
+			mu.layout_row(ctx, 2, []i32{ 54, -1 }, 0);
+			mu.label(ctx, "Position:");
+			mu.label(ctx, fmt.tprintf("%d, %d", window.rect.x, window.rect.y));
+			mu.label(ctx, "Size:");
+			mu.label(ctx, fmt.tprintf("%d, %d", window.rect.w, window.rect.h));
+		}
+
+		/* labels + buttons */
+		@static show_buttons := true;
+		if mu.header(ctx, &show_buttons, "Test Buttons") != {} {
+			mu.layout_row(ctx, 3, []i32{ 86, -110, -1 }, 0);
+			mu.label(ctx, "Test buttons 1:");
+			if button(ctx, "Button 1") do write_log("Pressed button 1");
+			if button(ctx, "Button 2") do write_log("Pressed button 2");
+			mu.label(ctx, "Test buttons 2:");
+			if button(ctx, "Button 3") do write_log("Pressed button 3");
+			if button(ctx, "Button 4") do write_log("Pressed button 4");
+		}
+
+		/* tree */
+		@static show_tree := true;
+		if mu.header(ctx, &show_tree, "Tree and Text") != {} {
+			mu.layout_row(ctx, 2, []i32{ 140, -1 }, 0);
+			mu.layout_begin_column(ctx);
+			@static states: [8]bool;
+			if mu.begin_treenode(ctx, &states[0], "Test 1") != {} {
+				if mu.begin_treenode(ctx, &states[1], "Test 1a") != {} {
+					mu.label(ctx, "Hello");
+					mu.label(ctx, "world");
+					mu.end_treenode(ctx);
+				}
+				if mu.begin_treenode(ctx, &states[2], "Test 1b") != {} {
+					if button(ctx, "Button 1") do write_log("Pressed button 1");
+					if button(ctx, "Button 2") do write_log("Pressed button 2");
+					mu.end_treenode(ctx);
+				}
+				mu.end_treenode(ctx);
+			}
+			if mu.begin_treenode(ctx, &states[3], "Test 2") != {} {
+				mu.layout_row(ctx, 2, []i32{ 54, 54 }, 0);
+				if button(ctx, "Button 3") do write_log("Pressed button 3");
+				if button(ctx, "Button 4") do write_log("Pressed button 4");
+				if button(ctx, "Button 5") do write_log("Pressed button 5");
+				if button(ctx, "Button 6") do write_log("Pressed button 6");
+				mu.end_treenode(ctx);
+			}
+			if mu.begin_treenode(ctx, &states[4], "Test 3") != {} {
+				@static checks := [3]bool{ true, false, true };
+				mu.checkbox(ctx, &checks[0], "Checkbox 1");
+				mu.checkbox(ctx, &checks[1], "Checkbox 2");
+				mu.checkbox(ctx, &checks[2], "Checkbox 3");
+				mu.end_treenode(ctx);
+			}
+			mu.layout_end_column(ctx);
+
+			mu.layout_begin_column(ctx);
+			mu.layout_row(ctx, 1, []i32{ -1 }, 0);
+			mu.text(ctx, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas lacinia, sem eu lacinia molestie, mi risus faucibus ipsum, eu varius magna felis a nulla.");
+			mu.layout_end_column(ctx);
+		}
+
+		/* background color sliders */
+		@static show_sliders := true;
+		if mu.header(ctx, &show_sliders, "Background Color") != {} {
+			mu.layout_row(ctx, 2, []i32{ -78, -1 }, 74);
+			/* sliders */
+			mu.layout_begin_column(ctx);
+			mu.layout_row(ctx, 2, []i32{ 46, -1 }, 0);
+			// TODO(oskar)
+			// mu.label(ctx, "Red:");   mu.slider(ctx, &bg[0], 0, 255);
+			// mu.label(ctx, "Green:"); mu.slider(ctx, &bg[1], 0, 255);
+			// mu.label(ctx, "Blue:");  mu.slider(ctx, &bg[2], 0, 255);
+			mu.layout_end_column(ctx);
+			/* color preview */
+			r := mu.layout_next(ctx);
+			mu.draw_rect(ctx, r, mu.Color{bg[0], bg[1], bg[2], 255});
+			mu.draw_control_text(ctx, fmt.tprintf("#%02X%02X%02X", bg[0], bg[1], bg[2]), r, .TEXT, {.ALIGNCENTER});
+		}
+
+		mu.end_window(ctx);
+	}
+}
+
 /*
-static  char logbuf[64000];
-static   int logbuf_updated = 0;
-
-
-static void write_log(const char *text) {
-  if (logbuf[0]) { strcat(logbuf, "\n"); }
-  strcat(logbuf, text);
-  logbuf_updated = 1;
-}
-
-
-static void test_window(mu_Context *ctx) {
-  static mu_Container window;
-
-  /* init window manually so we can set its position and size */
-  if (!window.inited) {
-	mu_init_window(ctx, &window, 0);
-	window.rect = mu_rect(40, 40, 300, 450);
-  }
-
-  /* limit window to minimum size */
-  window.rect.w = mu_max(window.rect.w, 240);
-  window.rect.h = mu_max(window.rect.h, 300);
-
-
-  /* do window */
-  if (mu_begin_window(ctx, &window, "Demo Window")) {
-
-	/* window info */
-	static int show_info = 0;
-	if (mu_header(ctx, &show_info, "Window Info")) {
-	  char buf[64];
-	  mu_layout_row(ctx, 2, (int[]) { 54, -1 }, 0);
-	  mu_label(ctx,"Position:");
-	  sprintf(buf, "%d, %d", window.rect.x, window.rect.y); mu_label(ctx, buf);
-	  mu_label(ctx, "Size:");
-	  sprintf(buf, "%d, %d", window.rect.w, window.rect.h); mu_label(ctx, buf);
-	}
-
-	/* labels + buttons */
-	static int show_buttons = 1;
-	if (mu_header(ctx, &show_buttons, "Test Buttons")) {
-	  mu_layout_row(ctx, 3, (int[]) { 86, -110, -1 }, 0);
-	  mu_label(ctx, "Test buttons 1:");
-	  if (mu_button(ctx, "Button 1")) { write_log("Pressed button 1"); }
-	  if (mu_button(ctx, "Button 2")) { write_log("Pressed button 2"); }
-	  mu_label(ctx, "Test buttons 2:");
-	  if (mu_button(ctx, "Button 3")) { write_log("Pressed button 3"); }
-	  if (mu_button(ctx, "Button 4")) { write_log("Pressed button 4"); }
-	}
-
-	/* tree */
-	static int show_tree = 1;
-	if (mu_header(ctx, &show_tree, "Tree and Text")) {
-	  mu_layout_row(ctx, 2, (int[]) { 140, -1 }, 0);
-	  mu_layout_begin_column(ctx);
-	  static int states[8];
-	  if (mu_begin_treenode(ctx, &states[0], "Test 1")) {
-		if (mu_begin_treenode(ctx, &states[1], "Test 1a")) {
-		  mu_label(ctx, "Hello");
-		  mu_label(ctx, "world");
-		  mu_end_treenode(ctx);
-		}
-		if (mu_begin_treenode(ctx, &states[2], "Test 1b")) {
-		  if (mu_button(ctx, "Button 1")) { write_log("Pressed button 1"); }
-		  if (mu_button(ctx, "Button 2")) { write_log("Pressed button 2"); }
-		  mu_end_treenode(ctx);
-		}
-		mu_end_treenode(ctx);
-	  }
-	  if (mu_begin_treenode(ctx, &states[3], "Test 2")) {
-		mu_layout_row(ctx, 2, (int[]) { 54, 54 }, 0);
-		if (mu_button(ctx, "Button 3")) { write_log("Pressed button 3"); }
-		if (mu_button(ctx, "Button 4")) { write_log("Pressed button 4"); }
-		if (mu_button(ctx, "Button 5")) { write_log("Pressed button 5"); }
-		if (mu_button(ctx, "Button 6")) { write_log("Pressed button 6"); }
-		mu_end_treenode(ctx);
-	  }
-	  if (mu_begin_treenode(ctx, &states[4], "Test 3")) {
-		static int checks[3] = { 1, 0, 1 };
-		mu_checkbox(ctx, &checks[0], "Checkbox 1");
-		mu_checkbox(ctx, &checks[1], "Checkbox 2");
-		mu_checkbox(ctx, &checks[2], "Checkbox 3");
-		mu_end_treenode(ctx);
-	  }
-	  mu_layout_end_column(ctx);
-
-	  mu_layout_begin_column(ctx);
-	  mu_layout_row(ctx, 1, (int[]) { -1 }, 0);
-	  mu_text(ctx, "Lorem ipsum dolor sit amet, consectetur adipiscing "
-		"elit. Maecenas lacinia, sem eu lacinia molestie, mi risus faucibus "
-		"ipsum, eu varius magna felis a nulla.");
-	  mu_layout_end_column(ctx);
-	}
-
-	/* background color sliders */
-	static int show_sliders = 1;
-	if (mu_header(ctx, &show_sliders, "Background Color")) {
-	  mu_layout_row(ctx, 2, (int[]) { -78, -1 }, 74);
-	  /* sliders */
-	  mu_layout_begin_column(ctx);
-	  mu_layout_row(ctx, 2, (int[]) { 46, -1 }, 0);
-	  mu_label(ctx, "Red:");   mu_slider(ctx, &bg[0], 0, 255);
-	  mu_label(ctx, "Green:"); mu_slider(ctx, &bg[1], 0, 255);
-	  mu_label(ctx, "Blue:");  mu_slider(ctx, &bg[2], 0, 255);
-	  mu_layout_end_column(ctx);
-	  /* color preview */
-	  mu_Rect r = mu_layout_next(ctx);
-	  mu_draw_rect(ctx, r, mu_color(bg[0], bg[1], bg[2], 255));
-	  char buf[32];
-	  sprintf(buf, "#%02X%02X%02X", (int) bg[0], (int) bg[1], (int) bg[2]);
-	  mu_draw_control_text(ctx, buf, r, MU_COLOR_TEXT, MU_OPT_ALIGNCENTER);
-	}
-
-	mu_end_window(ctx);
-  }
-}
-
-
 static void log_window(mu_Context *ctx) {
   static mu_Container window;
 
