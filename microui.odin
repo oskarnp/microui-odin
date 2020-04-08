@@ -749,31 +749,36 @@ update_control :: proc(ctx: ^Context, id: Id, rect: Rect, opt: Opt_Bits = {}) {
 }
 
 text :: proc(ctx: ^Context, text: string) {
-	// TODO(oskar)
-	/*
-	  const char *start, *end, *p = text;
-	  int width = -1;
-	  Font font = ctx->style->font;
-	  Color color = ctx->style->colors[COLOR_TEXT];
-	  layout_begin_column(ctx);
-	  layout_row(ctx, 1, &width, ctx->text_height(font));
-	  do {
-		Rect r = layout_next(ctx);
-		int w = 0;
-		start = end = p;
-		do {
-		  const char* word = p;
-		  while (*p && *p != ' ' && *p != '\n') { p++; }
-		  w += ctx->text_width(font, word, p - word);
-		  if (w > r.w && end != start) { break; }
-		  w += ctx->text_width(font, p, 1);
-		  end = p++;
-		} while (*end && *end != '\n');
-		draw_text(ctx, font, start, end - start, vec2(r.x, r.y), color);
-		p = end + 1;
-	  } while (*end);
-	  layout_end_column(ctx);
-	*/
+	text  := text;
+	font  := ctx.style.font;
+	color := ctx.style.colors[.TEXT];
+	layout_begin_column(ctx);
+	layout_row(ctx, 1, {-1}, ctx.text_height(font));
+	for len(text) > 0 {
+		w:     i32;
+		start: int;
+		end:   int = len(text);
+		r := layout_next(ctx);
+		for ch, i in text {
+			if ch == ' ' || ch == '\n' {
+				word := text[start:i];
+				w += ctx.text_width(font, word);
+				if w > r.w && start != 0 {
+					end = start;
+					break;
+				}
+				w += ctx.text_width(font, text[i:i+1]);
+				if ch == '\n' {
+					end = i+1;
+					break;
+				}
+				start = i+1;
+			}
+		}
+		draw_text(ctx, font, text[:end], Vec2{r.x, r.y}, color);
+		text = text[end:];
+	}
+	layout_end_column(ctx);
 }
 
 label :: proc(ctx: ^Context, text: string) {
