@@ -127,6 +127,7 @@ write_log :: proc(text: string) {
 
 test_window :: proc(ctx: ^mu.Context) {
 	@static window: mu.Container;
+	@static opts: mu.Opt_Bits;
 
 	// NOTE(oskar): mu.button() returns Res_Bits and not bool (should fix this)
 	button :: inline proc(ctx: ^mu.Context, label: string) -> bool do return mu.button(ctx, label) == {.SUBMIT};
@@ -134,7 +135,7 @@ test_window :: proc(ctx: ^mu.Context) {
 	/* init window manually so we can set its position and size */
 	if !window.inited {
 		mu.init_window(ctx, &window);
-		window.rect = mu.Rect{40, 40, 300, 450};
+		window.rect = mu.Rect{40, 40, 500, 450};
 	}
 
 	/* limit window to minimum size */
@@ -142,7 +143,24 @@ test_window :: proc(ctx: ^mu.Context) {
 	window.rect.h = max(window.rect.h, 300);
 
 	/* do window */
-	if mu.begin_window(ctx, &window, "Demo Window") {
+	if mu.begin_window_ex(ctx, &window, fmt.tprintf("Demo Window: FPS %v MSPF %v", frame_stats.fps, frame_stats.mspf), opts) {
+
+		@static show_options := true;
+		if mu.header(ctx, &show_options, "Window Options") != {} {
+			mu.layout_row(ctx, 3, []i32{120, 120, 120}, 0);
+			for opt in mu.Opt {
+				state: bool = opt in opts;
+				if mu.checkbox(ctx, &state, fmt.tprintf("%v", opt)) != {} {
+					if state {
+						opts |= {opt};
+					}
+					else {
+						opts &~= {opt};
+					}
+				}
+			}
+		}
+
 		/* window info */
 		@static show_info := false;
 		if mu.header(ctx, &show_info, "Window Info") != {} {
@@ -203,7 +221,7 @@ test_window :: proc(ctx: ^mu.Context) {
 
 			mu.layout_begin_column(ctx);
 			mu.layout_row(ctx, 1, []i32{ -1 }, 0);
-			mu.text(ctx, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas lacinia, sem eu lacinia molestie, mi risus faucibus ipsum, eu varius magna felis a nulla.");
+			mu.text(ctx, "Lorem ipsum\n dolor sit amet, consectetur adipiscing elit. Maecenas lacinia, sem eu lacinia molestie, mi risus faucibus ipsum, eu varius magna felis a nulla.");
 			mu.layout_end_column(ctx);
 		}
 
