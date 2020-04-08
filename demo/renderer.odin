@@ -59,7 +59,7 @@ r_init :: proc() -> (ok: bool) {
 
 	sdl.set_hint("SDL_RENDER_SCALE_QUALITY", "nearest");
 
-	renderer = sdl.create_renderer(window, -1, .Accelerated);
+	renderer = sdl.create_renderer(window, -1, .Accelerated /* |.Present_VSync */);
 	if renderer == nil {
 		log.error("create_renderer(): ", sdl.get_error());
 		return false;

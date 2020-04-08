@@ -5,8 +5,38 @@ import mu  "../"
 
 import "core:fmt"
 import "core:log"
+import "core:time"
+import "core:reflect"
 
 @static bg: [3]u8 = { 90, 95, 100 };
+@static frame_stats: Frame_Stats;
+
+Frame_Stats :: struct {
+	samples:      [100] time.Duration,
+	sample_index: int,
+	sample_sum:   time.Duration,
+	mspf, fps:    f64,
+	last_update:  time.Time,
+}
+
+init_frame_stats :: proc(using _: ^Frame_Stats) {
+	now := time.now();
+	last_update = now;
+}
+
+update_frame_stats :: proc(using _: ^Frame_Stats) {
+	now := time.now();
+	dt := time.diff(last_update, now);
+	last_update = now;
+
+	sample_sum -= samples[sample_index];
+	samples[sample_index] = dt;
+	sample_sum += dt;
+	sample_index = (sample_index + 1) % len(samples);
+
+	fps = len(samples) / time.duration_seconds(sample_sum);
+	mspf = 1000.0 * time.duration_seconds(sample_sum) / len(samples);
+}
 
 main :: proc() {
 	context.logger = log.create_console_logger(ident = "demo");
@@ -30,6 +60,7 @@ main :: proc() {
 	ctx.text_width = text_width;
 	ctx.text_height = text_height;
 
+	init_frame_stats(&frame_stats);
 	main_loop: for {
 		/* handle SDL events */
 		e: sdl.Event = ---;
@@ -108,6 +139,8 @@ main :: proc() {
 		//r_test();
 
 		r_present();
+
+		update_frame_stats(&frame_stats);
 	} // main_loop
 
 	sdl.quit();
