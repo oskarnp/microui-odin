@@ -1083,8 +1083,8 @@ end_treenode :: proc(ctx: ^Context) {
 	if cs.x > cnt.body.w do body.h -= sz;
 	/* to create a horizontal or vertical scrollbar almost-identical code is
 	** used; only the references to `x|y` `w|h` need to be switched */
-	scrollbar(ctx, cnt, body, cs, "!scrollbarv", 1); // 1 = y,w
-	scrollbar(ctx, cnt, body, cs, "!scrollbarh", 0); // 0 = x,h
+	scrollbar(ctx, cnt, body, cs, "!scrollbarv", 1); // 1 = y,h
+	scrollbar(ctx, cnt, body, cs, "!scrollbarh", 0); // 0 = x,w
 	pop_clip_rect(ctx);
 }
 
