@@ -4,7 +4,7 @@
 * See [`TODO.md`](TODO.md) for current status.
 
 ## Description
-A tiny, portable, immediate-mode UI library written in ~~ANSI C~~ Odin.
+A tiny, portable, immediate-mode UI library written in Odin. (Ported from [rxi/microui](https://github.com/rxi/microui).)
 
 ![screenshot](https://user-images.githubusercontent.com/3920290/56437823-c3dcdb80-62d8-11e9-978a-a0739f9e16f0.png)
 
