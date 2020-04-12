@@ -1030,75 +1030,61 @@ begin_treenode :: proc(ctx: ^Context, state: ^bool, label: string) -> Res_Bits {
 }
 
 end_treenode :: proc(ctx: ^Context) {
-  get_layout(ctx).indent -= ctx.style.indent;
-  pop_id(ctx);
+	get_layout(ctx).indent -= ctx.style.indent;
+	pop_id(ctx);
 }
 
-@private vscrollbar :: proc(ctx: ^Context, cnt: ^Container, b: ^Rect, cs: Vec2) {
+Orientation :: enum { Vertical, Horizontal };
+
+@private scrollbar :: proc(ctx: ^Context, cnt: ^Container, b: ^Rect, cs: Vec2, $o: Orientation) {
 	/* only add scrollbar if content size is larger than body */
-	maxscroll := cs.y - b.h;
-	if maxscroll > 0 && b.h > 0 {
-		id := get_id(ctx, "!scrollbarv");
-
-		/* get sizing / positioning */
-		base := b^;
-		base.x = b.x + b.w;
-		base.w = ctx.style.scrollbar_size;
-
-		/* handle input */
-		update_control(ctx, id, base);
-		if ctx.focus == id && .LEFT in ctx.mouse_down_bits {
-			cnt.scroll.y += ctx.mouse_delta.y * cs.y / base.h;
-		}
-		/* clamp scroll to limits */
-		cnt.scroll.y = clamp(cnt.scroll.y, 0, maxscroll);
-
-		/* draw base and thumb */
-		ctx.draw_frame(ctx, base, .SCROLLBASE);
-		thumb := base;
-		thumb.h = max(ctx.style.thumb_size, base.h * b.h / cs.y);
-		thumb.y += cnt.scroll.y * (base.h - thumb.h) / maxscroll;
-		ctx.draw_frame(ctx, thumb, .SCROLLTHUMB);
-
-		/* set this as the scroll_target (will get scrolled on mousewheel) */
-		/* if the mouse is over it */
-		if mouse_over(ctx, b^) do ctx.scroll_target = cnt;
+	when o == .Vertical {
+		maxscroll   := cs.y - b.h;
+		contentsize := b.h;
 	} else {
-		cnt.scroll.y = 0;
+		maxscroll   := cs.x - b.w;
+		contentsize := b.w;
 	}
-}
-
-@private hscrollbar :: proc(ctx: ^Context, cnt: ^Container, b: ^Rect, cs: Vec2) {
-	/* only add scrollbar if content size is larger than body */
-	maxscroll := cs.x - b.w;
-	if maxscroll > 0 && b.w > 0 {
-		id := get_id(ctx, "!scrollbarh");
+	if maxscroll > 0 && contentsize > 0 {
+		when o == .Vertical do id := get_id(ctx, "!scrollbarv"); else do id := get_id(ctx, "!scrollbarh");
 
 		/* get sizing / positioning */
 		base := b^;
-		base.y = b.y + b.h;
-		base.h = ctx.style.scrollbar_size;
+		when o == .Vertical {
+			base.x = b.x + b.w;
+			base.w = ctx.style.scrollbar_size;
+		} else {
+			base.y = b.y + b.h;
+			base.h = ctx.style.scrollbar_size;
+		}
 
 		/* handle input */
 		update_control(ctx, id, base);
 		if ctx.focus == id && .LEFT in ctx.mouse_down_bits {
-			cnt.scroll.x += ctx.mouse_delta.x * cs.x / base.w;
+			when o == .Vertical do cnt.scroll.y += ctx.mouse_delta.y * cs.y / base.h;
+			else                do cnt.scroll.x += ctx.mouse_delta.x * cs.x / base.w;
 		}
 		/* clamp scroll to limits */
-		cnt.scroll.x = clamp(cnt.scroll.x, 0, maxscroll);
+		when o == .Vertical do cnt.scroll.y = clamp(cnt.scroll.y, 0, maxscroll);
+		else                do cnt.scroll.x = clamp(cnt.scroll.x, 0, maxscroll);
 
 		/* draw base and thumb */
 		ctx.draw_frame(ctx, base, .SCROLLBASE);
 		thumb := base;
-		thumb.w = max(ctx.style.thumb_size, base.w * b.w / cs.x);
-		thumb.x += cnt.scroll.x * (base.w - thumb.w) / maxscroll;
+		when o == .Vertical {
+			thumb.h = max(ctx.style.thumb_size, base.h * b.h / cs.y);
+			thumb.y += cnt.scroll.y * (base.h - thumb.h) / maxscroll;
+		} else {
+			thumb.w = max(ctx.style.thumb_size, base.w * b.w / cs.x);
+			thumb.x += cnt.scroll.x * (base.w - thumb.w) / maxscroll;
+		}
 		ctx.draw_frame(ctx, thumb, .SCROLLTHUMB);
 
 		/* set this as the scroll_target (will get scrolled on mousewheel) */
 		/* if the mouse is over it */
 		if mouse_over(ctx, b^) do ctx.scroll_target = cnt;
 	} else {
-		cnt.scroll.x = 0;
+		when o == .Vertical do cnt.scroll.y = 0; else do cnt.scroll.x = 0;
 	}
 }
 
@@ -1113,9 +1099,8 @@ end_treenode :: proc(ctx: ^Context) {
 	if cs.x > cnt.body.w do body.h -= sz;
 	/* to create a horizontal or vertical scrollbar almost-identical code is
 	** used; only the references to `x|y` `w|h` need to be switched */
-	// NOTE(oskar): However, Odin doesn't have macros so unfortunately need to duplicate code here
-	vscrollbar(ctx, cnt, body, cs);
-	hscrollbar(ctx, cnt, body, cs);
+	scrollbar(ctx, cnt, body, cs, .Vertical);
+	scrollbar(ctx, cnt, body, cs, .Horizontal);
 	pop_clip_rect(ctx);
 }
 
