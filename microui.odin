@@ -125,7 +125,7 @@ Id    :: distinct u32;
 Real  :: REAL;
 Font  :: distinct rawptr;
 
-Vec2  :: struct { x, y: i32 }
+Vec2  :: distinct [2] i32;
 Rect  :: struct { x, y, w, h: i32 }
 Color :: struct { r, g, b, a: u8 }
 
@@ -1034,57 +1034,41 @@ end_treenode :: proc(ctx: ^Context) {
 	pop_id(ctx);
 }
 
-Orientation :: enum { Vertical, Horizontal };
+@private scrollbar :: proc(ctx: ^Context, cnt: ^Container, _b: ^Rect, cs: Vec2, id_string: string, i: int) {
+	b := cast(^struct{ pos, size: [2]i32 }) _b;
+	#assert(size_of(b^) == size_of(_b^));
 
-@private scrollbar :: proc(ctx: ^Context, cnt: ^Container, b: ^Rect, cs: Vec2, $o: Orientation) {
 	/* only add scrollbar if content size is larger than body */
-	when o == .Vertical {
-		maxscroll   := cs.y - b.h;
-		contentsize := b.h;
-	} else {
-		maxscroll   := cs.x - b.w;
-		contentsize := b.w;
-	}
+	maxscroll   := cs[i] - b.size[i];
+	contentsize := b.size[i];
 	if maxscroll > 0 && contentsize > 0 {
-		when o == .Vertical do id := get_id(ctx, "!scrollbarv"); else do id := get_id(ctx, "!scrollbarh");
+		id := get_id(ctx, id_string);
 
 		/* get sizing / positioning */
 		base := b^;
-		when o == .Vertical {
-			base.x = b.x + b.w;
-			base.w = ctx.style.scrollbar_size;
-		} else {
-			base.y = b.y + b.h;
-			base.h = ctx.style.scrollbar_size;
-		}
+		base.pos[1-i] = b.pos[1-i] + b.size[1-i];
+		base.size[1-i] = ctx.style.scrollbar_size;
 
 		/* handle input */
-		update_control(ctx, id, base);
+		update_control(ctx, id, transmute(Rect) base);
 		if ctx.focus == id && .LEFT in ctx.mouse_down_bits {
-			when o == .Vertical do cnt.scroll.y += ctx.mouse_delta.y * cs.y / base.h;
-			else                do cnt.scroll.x += ctx.mouse_delta.x * cs.x / base.w;
+			cnt.scroll[i] += ctx.mouse_delta[i] * cs[i] / base.size[i];
 		}
 		/* clamp scroll to limits */
-		when o == .Vertical do cnt.scroll.y = clamp(cnt.scroll.y, 0, maxscroll);
-		else                do cnt.scroll.x = clamp(cnt.scroll.x, 0, maxscroll);
+		cnt.scroll[i] = clamp(cnt.scroll[i], 0, maxscroll);
 
 		/* draw base and thumb */
-		ctx.draw_frame(ctx, base, .SCROLLBASE);
+		ctx.draw_frame(ctx, transmute(Rect) base, .SCROLLBASE);
 		thumb := base;
-		when o == .Vertical {
-			thumb.h = max(ctx.style.thumb_size, base.h * b.h / cs.y);
-			thumb.y += cnt.scroll.y * (base.h - thumb.h) / maxscroll;
-		} else {
-			thumb.w = max(ctx.style.thumb_size, base.w * b.w / cs.x);
-			thumb.x += cnt.scroll.x * (base.w - thumb.w) / maxscroll;
-		}
-		ctx.draw_frame(ctx, thumb, .SCROLLTHUMB);
+		thumb.size[i] = max(ctx.style.thumb_size, base.size[i] * b.size[i] / cs[i]);
+		thumb.pos[i] += cnt.scroll[i] * (base.size[i] - thumb.size[i]) / maxscroll;
+		ctx.draw_frame(ctx, transmute(Rect) thumb, .SCROLLTHUMB);
 
 		/* set this as the scroll_target (will get scrolled on mousewheel) */
 		/* if the mouse is over it */
-		if mouse_over(ctx, b^) do ctx.scroll_target = cnt;
+		if mouse_over(ctx, transmute(Rect) b^) do ctx.scroll_target = cnt;
 	} else {
-		when o == .Vertical do cnt.scroll.y = 0; else do cnt.scroll.x = 0;
+		cnt.scroll[i] = 0;
 	}
 }
 
@@ -1099,8 +1083,8 @@ Orientation :: enum { Vertical, Horizontal };
 	if cs.x > cnt.body.w do body.h -= sz;
 	/* to create a horizontal or vertical scrollbar almost-identical code is
 	** used; only the references to `x|y` `w|h` need to be switched */
-	scrollbar(ctx, cnt, body, cs, .Vertical);
-	scrollbar(ctx, cnt, body, cs, .Horizontal);
+	scrollbar(ctx, cnt, body, cs, "!scrollbarv", 1); // 1 = y,w
+	scrollbar(ctx, cnt, body, cs, "!scrollbarh", 0); // 0 = x,h
 	pop_clip_rect(ctx);
 }
 
