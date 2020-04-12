@@ -1,8 +1,8 @@
 [submodule "demo/odin-sdl2"]
-	path = demo/odin-sdl2
+	path = demo-sdl2/odin-sdl2
 	url = https://github.com/oskarnp/odin-sdl2.git
 [submodule "demo/odin-gl"]
-	path = demo/odin-gl
+	path = demo-sdl2/odin-gl
 	url = https://github.com/vassvik/odin-gl.git
 [submodule "demo-sokol/odin-sokol"]
 	path = demo-sokol/odin-sokol
