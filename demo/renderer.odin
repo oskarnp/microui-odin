@@ -153,6 +153,7 @@ r_present :: proc() {
 atlas_quad :: proc(dst, src: mu.Rect, using color: mu.Color) {
 	src := transmute(sdl.Rect) src;
 	dst := transmute(sdl.Rect) dst;
+	sdl.set_texture_alpha_mod(atlas_texture, a);
 	sdl.set_texture_color_mod(atlas_texture, r, g, b);
 	sdl.render_copy(renderer, atlas_texture, &src, &dst);
 }
