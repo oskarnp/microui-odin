@@ -54,7 +54,7 @@ Command_Type :: enum i32 {
 	CLIP,
 	RECT,
 	TEXT,
-	ICON,
+	ICON
 }
 
 Color_Type :: enum {
@@ -79,7 +79,8 @@ Icon :: enum i32 {
 	CLOSE,
 	CHECK,
 	COLLAPSED,
-	EXPANDED
+	EXPANDED,
+	RESIZE
 }
 
 Res :: enum {
@@ -172,6 +173,7 @@ Style :: struct {
 	spacing:        i32,
 	indent:         i32,
 	title_height:   i32,
+	footer_height:  i32,
 	scrollbar_size: i32,
 	thumb_size:     i32,
 	colors:         [Color_Type] Color,
@@ -229,7 +231,8 @@ pop  :: inline proc(stk: ^$T/Stack($V,$N))         { expect(stk.idx > 0); stk.id
 	font = nil,
 	size = { 68, 10 },
 	padding = 6, spacing = 4, indent = 24,
-	title_height = 26, scrollbar_size = 12, thumb_size = 8,
+	title_height = 26, footer_height = 20,
+	scrollbar_size = 12, thumb_size = 8,
 	colors = {
 		.TEXT        = {230, 230, 230, 255},
 		.BORDER      = {25,  25,  25,  255},
@@ -1170,19 +1173,21 @@ begin_window_ex :: proc(ctx: ^Context, cnt: ^Container, title: string, opt: Opt_
 		}
 	}
 
-	push_container_body(ctx, cnt, body, opt);
-
 	/* do `resize` handle */
 	if .NORESIZE not_in opt {
-		sz := ctx.style.title_height;
+		sz := ctx.style.footer_height;
 		id := get_id(ctx, "!resize");
 		r := Rect{rect.x + rect.w - sz, rect.y + rect.h - sz, sz, sz};
+		draw_icon(ctx, .RESIZE, r, ctx.style.colors[.TEXT]);
 		update_control(ctx, id, r, opt);
 		if id == ctx.focus && .LEFT in ctx.mouse_down_bits {
 			cnt.rect.w = max(96, cnt.rect.w + ctx.mouse_delta.x);
 			cnt.rect.h = max(64, cnt.rect.h + ctx.mouse_delta.y);
 		}
+		body.h -= sz;
 	}
+
+	push_container_body(ctx, cnt, body, opt);
 
 	/* resize to content size */
 	if .AUTOSIZE in opt {
