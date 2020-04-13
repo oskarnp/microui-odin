@@ -176,7 +176,7 @@ test_window :: proc(ctx: ^mu.Context) {
 	window.rect.h = max(window.rect.h, 300);
 
 	/* do window */
-	if mu.begin_window_ex(ctx, &window, fmt.tprintf("Demo Window: FPS %v MSPF %v", frame_stats.fps, frame_stats.mspf), opts) {
+	if mu.begin_window(ctx, &window, fmt.tprintf("Demo Window: FPS %v MSPF %v", frame_stats.fps, frame_stats.mspf), opts) {
 
 		@static show_options := true;
 		if mu.header(ctx, &show_options, "Window Options") != {} {

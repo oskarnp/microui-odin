@@ -789,7 +789,7 @@ label :: proc(ctx: ^Context, text: string) {
 	draw_control_text(ctx, text, layout_next(ctx), .TEXT);
 }
 
-button_ex :: proc(ctx: ^Context, label: string, icon: Icon, opt: Opt_Bits = {}) -> (res: Res_Bits) {
+button :: proc(ctx: ^Context, label: string, icon: Icon = .NONE, opt: Opt_Bits = {.ALIGNCENTER}) -> (res: Res_Bits) {
 	id := len(label) > 0 ? get_id(ctx, label) : get_id(ctx, icon);
 	r := layout_next(ctx);
 	update_control(ctx, id, r, opt);
@@ -802,10 +802,6 @@ button_ex :: proc(ctx: ^Context, label: string, icon: Icon, opt: Opt_Bits = {}) 
 	if len(label) > 0 do draw_control_text(ctx, label, r, .TEXT, opt);
 	if icon != .NONE do draw_icon(ctx, icon, r, ctx.style.colors[.TEXT]);
 	return;
-}
-
-button :: proc(ctx: ^Context, label: string) -> Res_Bits {
-	return button_ex(ctx, label, .NONE, {.ALIGNCENTER});
 }
 
 checkbox :: proc(ctx: ^Context, state: ^bool, label: string) -> (res: Res_Bits) {
@@ -1102,7 +1098,7 @@ end_treenode :: proc(ctx: ^Context) {
 	pop_container(ctx);
 }
 
-begin_window_ex :: proc(ctx: ^Context, cnt: ^Container, title: string, opt: Opt_Bits = {}) -> bool {
+begin_window :: proc(ctx: ^Context, cnt: ^Container, title: string, opt: Opt_Bits = {}) -> bool {
 	if !cnt.inited do init_window(ctx, cnt, opt);
 	if !cnt.open do return false;
 
@@ -1179,17 +1175,13 @@ begin_window_ex :: proc(ctx: ^Context, cnt: ^Container, title: string, opt: Opt_
 	return true;
 }
 
-begin_window :: proc(ctx: ^Context, cnt: ^Container, title: string) -> bool {
-	return begin_window_ex(ctx, cnt, title);
-}
-
 end_window :: proc(ctx: ^Context) {
 	pop_clip_rect(ctx);
 	end_root_container(ctx);
 }
 
 open_popup :: proc(ctx: ^Context, cnt: ^Container) {
-	/* set as hover root so popup isn't closed in begin_window_ex()  */
+	/* set as hover root so popup isn't closed in begin_window()  */
 	ctx.last_hover_root = cnt;
 	ctx.hover_root = cnt;
 	/* init container if not inited */
@@ -1202,23 +1194,19 @@ open_popup :: proc(ctx: ^Context, cnt: ^Container) {
 
 begin_popup :: proc(ctx: ^Context, cnt: ^Container) -> bool {
 	opt := Opt_Bits{.POPUP, .AUTOSIZE, .NORESIZE, .NOSCROLL, .NOTITLE, .CLOSED};
-	return begin_window_ex(ctx, cnt, "", opt);
+	return begin_window(ctx, cnt, "", opt);
 }
 
 end_popup :: proc(ctx: ^Context) {
 	end_window(ctx);
 }
 
-begin_panel_ex :: proc(ctx: ^Context, cnt: ^Container, opt: Opt_Bits = {}) {
+begin_panel :: proc(ctx: ^Context, cnt: ^Container, opt: Opt_Bits = {}) {
 	cnt.rect = layout_next(ctx);
 	if .NOFRAME not_in opt do ctx.draw_frame(ctx, cnt.rect, .PANELBG);
 	push_container(ctx, cnt);
 	push_container_body(ctx, cnt, cnt.rect, opt);
 	push_clip_rect(ctx, cnt.body);
-}
-
-begin_panel :: proc(ctx: ^Context, cnt: ^Container) {
-	begin_panel_ex(ctx, cnt);
 }
 
 end_panel :: proc(ctx: ^Context) {
