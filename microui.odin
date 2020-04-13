@@ -30,8 +30,9 @@ import "core:sort"
 import "core:builtin"
 import "core:strings"
 import "core:reflect"
+import "core:strconv"
 
-COMMANDLIST_SIZE     :: (1024 * 256);
+COMMANDLIST_SIZE     :: 1024 * 256;
 ROOTLIST_SIZE        :: 32;
 CONTAINERSTACK_SIZE  :: 32;
 CLIPSTACK_SIZE       :: 32;
@@ -827,19 +828,19 @@ checkbox :: proc(ctx: ^Context, state: ^bool, label: string) -> (res: Res_Bits) 
 	return;
 }
 
-/*
-textbox_raw :: proc(ctx: ^Context, buf: string, id: Id, r: Rect, opt: Opt_Bits = {}) -> (res: Res_Bits) {
+textbox_raw :: proc(ctx: ^Context, buf: []u8, id: Id, r: Rect, opt: Opt_Bits = {}) -> (res: Res_Bits) {
+	/*
 	update_control(ctx, id, r, opt | .HOLDFOCUS);
 
 	if ctx.focus == id {
 		/* handle text input */
-		len := len(buf);
+		len := strings.builder_len(buf);
 		n := min(bufsz - len - 1, strings.builder_len(ctx.text_input));
 		if (n > 0) {
 			memcpy(buf + len, ctx->text_input, n);
 			len += n;
 			buf[len] = '\0';
-			res |= RES_CHANGE;
+			res |= {.CHANGE};
 		}
 		/* handle backspace */
 		if .BACKSPACE in ctx.key_pressed_bits && len > 0 {
@@ -874,128 +875,101 @@ textbox_raw :: proc(ctx: ^Context, buf: string, id: Id, r: Rect, opt: Opt_Bits =
 		draw_control_text(ctx, buf, r, .TEXT, opt);
 	}
 
+	*/
 	return;
 }
-*/
 
-/*
+@private parse_real :: inline proc(s: string) -> Real {
+	when Real == f32 do
+		return strconv.parse_f32(s);
+	else when Real == f64 do
+		return strconv.parse_f64(s);
+	else do
+		#panic("Unsupported type of Real");
+	return 0; // unreached
+}
 
-static int number_textbox(Context *ctx, Real *value, Rect r, Id id) {
-  if (ctx->mouse_pressed == MOUSE_LEFT &&
-	  ctx->key_down & KEY_SHIFT &&
-	  ctx->hover == id)
-  {
-	ctx->number_editing = id;
-	sprintf(ctx->number_buf, REAL_FMT, *value);
-  }
-  if (ctx->number_editing == id) {
-	int res = textbox_raw(
-	  ctx, ctx->number_buf, sizeof(ctx->number_buf), id, r, 0);
-	if (res & RES_SUBMIT || ctx->focus != id) {
-	  *value = strtod(ctx->number_buf, NULL);
-	  ctx->number_editing = 0;
-	} else {
-	  return 1;
+@private number_textbox :: proc(ctx: ^Context, value: ^Real, r: Rect, id: Id) -> bool {
+	if ctx.mouse_pressed_bits == {.LEFT} && .SHIFT in ctx.key_down_bits && ctx.hover == id {
+		ctx.number_editing = id;
+		fmt.bprintf(ctx.number_buf[:], REAL_FMT, value^);
 	}
-  }
-  return 0;
+	if ctx.number_editing == id {
+		res := textbox_raw(ctx, ctx.number_buf[:], id, r, {});
+		if .SUBMIT in res || ctx.focus != id {
+			value^ = parse_real(string(ctx.number_buf[:]));
+			ctx.number_editing = 0;
+		} else {
+			return true;
+		}
+	}
+	return false;
 }
 
-
-int textbox_ex(Context *ctx, char *buf, int bufsz, int opt) {
-  Id id = get_id(ctx, &buf, sizeof(buf));
-  Rect r = layout_next(ctx);
-  return textbox_raw(ctx, buf, bufsz, id, r, opt);
+textbox :: proc(ctx: ^Context, buf: []u8, opt: Opt_Bits = {}) -> Res_Bits {
+	id := get_id(ctx, uintptr(&buf[0]));
+	r := layout_next(ctx);
+	return textbox_raw(ctx, buf, id, r, opt);
 }
 
+slider :: proc(ctx: ^Context, value: ^Real, low, high: Real, step: Real = 0.0, fmt_string: string = SLIDER_FMT, opt: Opt_Bits = {.ALIGNCENTER}) -> (res: Res_Bits) {
+	last := value^; v := last;
+	id := get_id(ctx, uintptr(value));
+	base := layout_next(ctx);
 
-int textbox(Context *ctx, char *buf, int bufsz) {
-  return textbox_ex(ctx, buf, bufsz, 0);
+	/* handle text input mode */
+	if number_textbox(ctx, &v, base, id) do return;
+
+	/* handle normal mode */
+	update_control(ctx, id, base, opt);
+
+	/* handle input */
+	if ctx.focus == id && ctx.mouse_down_bits == {.LEFT} {
+		v = low + (Real(ctx.mouse_pos.x - base.x) / Real(base.w)) * (high - low);
+		if step != 0.0 do v = ((v + step/2) / step) * step;
+	}
+	/* clamp and store value, update res */
+	v = clamp(v, low, high); value^ = v;
+	if last != v do res |= {.CHANGE};
+
+	/* draw base */
+	draw_control_frame(ctx, id, base, .BASE, opt);
+	/* draw thumb */
+	w := ctx.style.thumb_size;
+	normalized := (v - low) / (high - low);
+	thumb := Rect{base.x + i32(normalized * Real(base.w - w)), base.y, w, base.h};
+	draw_control_frame(ctx, id, thumb, .BUTTON, opt);
+	/* draw text  */
+	draw_control_text(ctx, fmt.tprintf(fmt_string, v), base, .TEXT, opt);
+
+	return;
 }
 
+number :: proc(ctx: ^Context, value: ^Real, step: Real, fmt_string: string = SLIDER_FMT, opt: Opt_Bits = {.ALIGNCENTER}) -> (res: Res_Bits) {
+	id := get_id(ctx, uintptr(value));
+	base := layout_next(ctx);
+	last := value^;
 
-int slider_ex(Context *ctx, Real *value, Real low, Real high,
-  Real step, const char *fmt, int opt)
-{
-  char buf[MAX_FMT + 1];
-  Rect thumb;
-  int w, res = 0;
-  Real normalized, last = *value, v = last;
-  Id id = get_id(ctx, &value, sizeof(value));
-  Rect base = layout_next(ctx);
+	/* handle text input mode */
+	if number_textbox(ctx, value, base, id) do return;
 
-  /* handle text input mode */
-  if (number_textbox(ctx, &v, base, id)) { return res; }
+	/* handle normal mode */
+	update_control(ctx, id, base, opt);
 
-  /* handle normal mode */
-  update_control(ctx, id, base, opt);
+	/* handle input */
+	if ctx.focus == id && ctx.mouse_down_bits == {.LEFT} {
+		value^ += Real(ctx.mouse_delta.x) * step;
+	}
+	/* set flag if value changed */
+	if value^ != last do res |= {.CHANGE};
 
-  /* handle input */
-  if (ctx->focus == id && ctx->mouse_down == MOUSE_LEFT) {
-	v = low + ((Real) (ctx->mouse_pos.x - base.x) / base.w) * (high - low);
-	if (step) { v = ((long) ((v + step/2) / step)) * step; }
-  }
-  /* clamp and store value, update res */
-  *value = v = clamp(v, low, high);
-  if (last != v) { res |= RES_CHANGE; }
+	/* draw base */
+	draw_control_frame(ctx, id, base, .BASE, opt);
+	/* draw text  */
+	draw_control_text(ctx, fmt.tprintf(fmt_string, value^), base, .TEXT, opt);
 
-  /* draw base */
-  draw_control_frame(ctx, id, base, COLOR_BASE, opt);
-  /* draw thumb */
-  w = ctx->style->thumb_size;
-  normalized = (v - low) / (high - low);
-  thumb = rect(base.x + normalized * (base.w - w), base.y, w, base.h);
-  draw_control_frame(ctx, id, thumb, COLOR_BUTTON, opt);
-  /* draw text  */
-  sprintf(buf, fmt, v);
-  draw_control_text(ctx, buf, base, COLOR_TEXT, opt);
-
-  return res;
+	return;
 }
-
-
-int slider(Context *ctx, Real *value, Real low, Real high) {
-  return slider_ex(ctx, value, low, high, 0, SLIDER_FMT, OPT_ALIGNCENTER);
-}
-
-
-int number_ex(Context *ctx, Real *value, Real step,
-  const char *fmt,int opt)
-{
-  char buf[MAX_FMT + 1];
-  int res = 0;
-  Id id = get_id(ctx, &value, sizeof(value));
-  Rect base = layout_next(ctx);
-  Real last = *value;
-
-  /* handle text input mode */
-  if (number_textbox(ctx, value, base, id)) { return res; }
-
-  /* handle normal mode */
-  update_control(ctx, id, base, opt);
-
-  /* handle input */
-  if (ctx->focus == id && ctx->mouse_down == MOUSE_LEFT) {
-	*value += ctx->mouse_delta.x * step;
-  }
-  /* set flag if value changed */
-  if (*value != last) { res |= RES_CHANGE; }
-
-  /* draw base */
-  draw_control_frame(ctx, id, base, COLOR_BASE, opt);
-  /* draw text  */
-  sprintf(buf, fmt, *value);
-  draw_control_text(ctx, buf, base, COLOR_TEXT, opt);
-
-  return res;
-}
-
-
-int number(Context *ctx, Real *value, Real step) {
-  return number_ex(ctx, value, step, SLIDER_FMT, OPT_ALIGNCENTER);
-}
-
-*/
 
 @private _header :: proc(ctx: ^Context, state: ^bool, label: string, istreenode: bool) -> Res_Bits {
 	layout_row(ctx, 1, []i32{-1}, 0);

@@ -150,7 +150,7 @@ process_frame :: proc(ctx: ^mu.Context) {
 	mu.begin(ctx);
 	test_window(ctx);
 	//log_window(ctx);
-	//style_window(ctx);
+	style_window(ctx);
 	mu.end(ctx);
 }
 
@@ -265,10 +265,9 @@ test_window :: proc(ctx: ^mu.Context) {
 			/* sliders */
 			mu.layout_begin_column(ctx);
 			mu.layout_row(ctx, 2, []i32{ 46, -1 }, 0);
-			// TODO(oskar)
-			// mu.label(ctx, "Red:");   mu.slider(ctx, &bg[0], 0, 255);
-			// mu.label(ctx, "Green:"); mu.slider(ctx, &bg[1], 0, 255);
-			// mu.label(ctx, "Blue:");  mu.slider(ctx, &bg[2], 0, 255);
+			mu.label(ctx, "Red:");   uint8_slider(ctx, &bg[0], 0, 255);
+			mu.label(ctx, "Green:"); uint8_slider(ctx, &bg[1], 0, 255);
+			mu.label(ctx, "Blue:");  uint8_slider(ctx, &bg[2], 0, 255);
 			mu.layout_end_column(ctx);
 			/* color preview */
 			r := mu.layout_next(ctx);
@@ -278,6 +277,17 @@ test_window :: proc(ctx: ^mu.Context) {
 
 		mu.end_window(ctx);
 	}
+}
+
+@private uint8_slider :: proc(ctx: ^mu.Context, value: ^u8, low, high: int) -> (res: mu.Res_Bits) {
+	using mu;
+	@static tmp: Real;
+	push_id(ctx, uintptr(value));
+	tmp = Real(value^);
+	res = slider(ctx, &tmp, Real(low), Real(high), 0, "%.0f", {.ALIGNCENTER});
+	value^ = u8(tmp);
+	pop_id(ctx);
+	return;
 }
 
 /*
@@ -321,58 +331,29 @@ static void log_window(mu_Context *ctx) {
 	mu_end_window(ctx);
   }
 }
-
-
-static int uint8_slider(mu_Context *ctx, unsigned char *value, int low, int high) {
-  static float tmp;
-  mu_push_id(ctx, &value, sizeof(value));
-  tmp = *value;
-  int res = mu_slider_ex(ctx, &tmp, low, high, 0, "%.0f", MU_OPT_ALIGNCENTER);
-  *value = tmp;
-  mu_pop_id(ctx);
-  return res;
-}
-
-
-static void style_window(mu_Context *ctx) {
-  static mu_Container window;
-
-  /* init window manually so we can set its position and size */
-  if (!window.inited) {
-	mu_init_window(ctx, &window, 0);
-	window.rect = mu_rect(350, 250, 300, 240);
-  }
-
-  static struct { const char *label; int idx; } colors[] = {
-	{ "text:",         MU_COLOR_TEXT        },
-	{ "border:",       MU_COLOR_BORDER      },
-	{ "windowbg:",     MU_COLOR_WINDOWBG    },
-	{ "titlebg:",      MU_COLOR_TITLEBG     },
-	{ "titletext:",    MU_COLOR_TITLETEXT   },
-	{ "panelbg:",      MU_COLOR_PANELBG     },
-	{ "button:",       MU_COLOR_BUTTON      },
-	{ "buttonhover:",  MU_COLOR_BUTTONHOVER },
-	{ "buttonfocus:",  MU_COLOR_BUTTONFOCUS },
-	{ "base:",         MU_COLOR_BASE        },
-	{ "basehover:",    MU_COLOR_BASEHOVER   },
-	{ "basefocus:",    MU_COLOR_BASEFOCUS   },
-	{ "scrollbase:",   MU_COLOR_SCROLLBASE  },
-	{ "scrollthumb:",  MU_COLOR_SCROLLTHUMB },
-	{ NULL }
-  };
-
-  if (mu_begin_window(ctx, &window, "Style Editor")) {
-	int sw = mu_get_container(ctx)->body.w * 0.14;
-	mu_layout_row(ctx, 6, (int[]) { 80, sw, sw, sw, sw, -1 }, 0);
-	for (int i = 0; colors[i].label; i++) {
-	  mu_label(ctx, colors[i].label);
-	  uint8_slider(ctx, &ctx->style->colors[i].r, 0, 255);
-	  uint8_slider(ctx, &ctx->style->colors[i].g, 0, 255);
-	  uint8_slider(ctx, &ctx->style->colors[i].b, 0, 255);
-	  uint8_slider(ctx, &ctx->style->colors[i].a, 0, 255);
-	  mu_draw_rect(ctx, mu_layout_next(ctx), ctx->style->colors[i]);
-	}
-	mu_end_window(ctx);
-  }
-}
 */
+
+@private style_window :: proc(ctx: ^mu.Context) {
+	using mu;
+	@static window: Container;
+
+	/* init window manually so we can set its position and size */
+	if !window.inited {
+		init_window(ctx, &window, {});
+		window.rect = Rect{350, 250, 300, 240};
+	}
+
+	if begin_window(ctx, &window, "Style Editor") {
+		sw := i32(Real(get_container(ctx).body.w) * 0.14);
+		layout_row(ctx, 6, { 80, sw, sw, sw, sw, -1 }, 0);
+		for c in Color_Type {
+			label(ctx, fmt.tprintf("%s:", reflect.enum_string(c)));
+			uint8_slider(ctx, &ctx.style.colors[c].r, 0, 255);
+			uint8_slider(ctx, &ctx.style.colors[c].g, 0, 255);
+			uint8_slider(ctx, &ctx.style.colors[c].b, 0, 255);
+			uint8_slider(ctx, &ctx.style.colors[c].a, 0, 255);
+			draw_rect(ctx, layout_next(ctx), ctx.style.colors[c]);
+		}
+		end_window(ctx);
+	}
+}
