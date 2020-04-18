@@ -14,7 +14,7 @@
     - [x] treenode
     - [x] header
     - [x] popup
-    - [x] slider (*except for Shift click for input textbox*)
+    - [x] slider
     - [x] textbox
 - [x] Demo: SDL2 - **DONE**
   - [x] renderer
