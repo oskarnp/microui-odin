@@ -40,7 +40,6 @@ IDSTACK_SIZE         :: 32;
 LAYOUTSTACK_SIZE     :: 16;
 MAX_WIDTHS           :: 16;
 REAL                 :: f32;
-REAL_FMT             :: "%.3g";
 SLIDER_FMT           :: "%.2f";
 MAX_FMT              :: 127;
 
@@ -198,6 +197,7 @@ Context :: struct {
 	last_hover_root:                     ^Container,
 	scroll_target:                       ^Container,
 	number_buf:                          [MAX_FMT] u8,
+	number_len:                          int,
 	number_editing:                      Id,
 	/* stacks */
 	command_list:                        Stack(u8, COMMANDLIST_SIZE),
@@ -824,27 +824,26 @@ checkbox :: proc(ctx: ^Context, state: ^bool, label: string) -> (res: Res_Bits) 
 	return;
 }
 
-textbox_raw :: proc(ctx: ^Context, buf: []u8, id: Id, r: Rect, opt: Opt_Bits = {}) -> (res: Res_Bits) {
-	/*
-	update_control(ctx, id, r, opt | .HOLDFOCUS);
+textbox_raw :: proc(ctx: ^Context, textbuf: []u8, textlen: ^int, id: Id, r: Rect, opt: Opt_Bits = {}) -> (res: Res_Bits) {
+	update_control(ctx, id, r, opt | {.HOLDFOCUS});
 
 	if ctx.focus == id {
 		/* handle text input */
-		len := strings.builder_len(buf);
-		n := min(bufsz - len - 1, strings.builder_len(ctx.text_input));
-		if (n > 0) {
-			memcpy(buf + len, ctx->text_input, n);
-			len += n;
-			buf[len] = '\0';
+		n := min(len(textbuf) - textlen^, strings.builder_len(ctx.text_input));
+		if n > 0 {
+			copy(textbuf[textlen^:], strings.to_string(ctx.text_input)[:n]);
+			textlen^ += n;
 			res |= {.CHANGE};
 		}
 		/* handle backspace */
-		if .BACKSPACE in ctx.key_pressed_bits && len > 0 {
-			panic("FIXME(oskar)");
-			// /* skip utf-8 continuation bytes */
-			// while ((buf[--len] & 0xc0) == 0x80 && len > 0);
-			// buf[len] = '\0';
-			// res |= RES_CHANGE;
+		if .BACKSPACE in ctx.key_pressed_bits && textlen^ > 0 {
+			/* skip utf-8 continuation bytes */
+			for textlen^ > 0 {
+				textlen^ -= 1;
+				if textbuf[textlen^] & 0xc0 == 0x80 do continue;
+				else do break;
+			}
+			res |= {.CHANGE};
 		}
 		/* handle return */
 		if .RETURN in ctx.key_pressed_bits {
@@ -853,47 +852,46 @@ textbox_raw :: proc(ctx: ^Context, buf: []u8, id: Id, r: Rect, opt: Opt_Bits = {
 		}
 	}
 
+	textstr := string(textbuf[:textlen^]);
+
 	/* draw */
 	draw_control_frame(ctx, id, r, .BASE, opt);
 	if ctx.focus == id {
 		color := ctx.style.colors[.TEXT];
-		font := ctx.style.font;
-		textw := ctx.text_width(font, buf);
+		font  := ctx.style.font;
+		textw := ctx.text_width(font, textstr);
 		texth := ctx.text_height(font);
-		ofx := r.w - ctx.style.padding - textw - 1;
+		ofx   := r.w - ctx.style.padding - textw - 1;
 		textx := r.x + min(ofx, ctx.style.padding);
 		texty := r.y + (r.h - texth) / 2;
 		push_clip_rect(ctx, r);
-		draw_text(ctx, font, buf, Vec2{textx, texty}, color);
+		draw_text(ctx, font, textstr, Vec2{textx, texty}, color);
 		draw_rect(ctx, Rect{textx + textw, texty, 1, texth}, color);
 		pop_clip_rect(ctx);
 	} else {
-		draw_control_text(ctx, buf, r, .TEXT, opt);
+		draw_control_text(ctx, textstr, r, .TEXT, opt);
 	}
 
-	*/
 	return;
 }
 
 @private parse_real :: inline proc(s: string) -> Real {
-	when Real == f32 do
-		return strconv.parse_f32(s);
-	else when Real == f64 do
-		return strconv.parse_f64(s);
-	else do
-		#panic("Unsupported type of Real");
-	return 0; // unreached
+	     when Real == f32 do return strconv.parse_f32(s);
+	else when Real == f64 do return strconv.parse_f64(s);
+	unreachable();
+	return 0;
 }
 
-@private number_textbox :: proc(ctx: ^Context, value: ^Real, r: Rect, id: Id) -> bool {
+@private number_textbox :: proc(ctx: ^Context, value: ^Real, r: Rect, id: Id, fmt_string: string) -> bool {
 	if ctx.mouse_pressed_bits == {.LEFT} && .SHIFT in ctx.key_down_bits && ctx.hover == id {
 		ctx.number_editing = id;
-		fmt.bprintf(ctx.number_buf[:], REAL_FMT, value^);
+		nstr := fmt.bprintf(ctx.number_buf[:], fmt_string, value^);
+		ctx.number_len = len(nstr);
 	}
 	if ctx.number_editing == id {
-		res := textbox_raw(ctx, ctx.number_buf[:], id, r, {});
+		res := textbox_raw(ctx, ctx.number_buf[:], &ctx.number_len, id, r, {});
 		if .SUBMIT in res || ctx.focus != id {
-			value^ = parse_real(string(ctx.number_buf[:]));
+			value^ = parse_real(string(ctx.number_buf[:ctx.number_len]));
 			ctx.number_editing = 0;
 		} else {
 			return true;
@@ -902,10 +900,10 @@ textbox_raw :: proc(ctx: ^Context, buf: []u8, id: Id, r: Rect, opt: Opt_Bits = {
 	return false;
 }
 
-textbox :: proc(ctx: ^Context, buf: []u8, opt: Opt_Bits = {}) -> Res_Bits {
+textbox :: proc(ctx: ^Context, buf: []u8, textlen: ^int, opt: Opt_Bits = {}) -> Res_Bits {
 	id := get_id(ctx, uintptr(&buf[0]));
 	r := layout_next(ctx);
-	return textbox_raw(ctx, buf, id, r, opt);
+	return textbox_raw(ctx, buf, textlen, id, r, opt);
 }
 
 slider :: proc(ctx: ^Context, value: ^Real, low, high: Real, step: Real = 0.0, fmt_string: string = SLIDER_FMT, opt: Opt_Bits = {.ALIGNCENTER}) -> (res: Res_Bits) {
@@ -914,7 +912,7 @@ slider :: proc(ctx: ^Context, value: ^Real, low, high: Real, step: Real = 0.0, f
 	base := layout_next(ctx);
 
 	/* handle text input mode */
-	if number_textbox(ctx, &v, base, id) do return;
+	if number_textbox(ctx, &v, base, id, fmt_string) do return;
 
 	/* handle normal mode */
 	update_control(ctx, id, base, opt);
@@ -947,7 +945,7 @@ number :: proc(ctx: ^Context, value: ^Real, step: Real, fmt_string: string = SLI
 	last := value^;
 
 	/* handle text input mode */
-	if number_textbox(ctx, value, base, id) do return;
+	if number_textbox(ctx, value, base, id, fmt_string) do return;
 
 	/* handle normal mode */
 	update_control(ctx, id, base, opt);

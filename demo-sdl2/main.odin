@@ -7,6 +7,7 @@ import "core:fmt"
 import "core:log"
 import "core:time"
 import "core:reflect"
+import "core:strings"
 
 @static bg: [3]u8 = { 90, 95, 100 };
 @static frame_stats: Frame_Stats;
@@ -149,13 +150,9 @@ main :: proc() {
 process_frame :: proc(ctx: ^mu.Context) {
 	mu.begin(ctx);
 	test_window(ctx);
-	//log_window(ctx);
+	log_window(ctx);
 	style_window(ctx);
 	mu.end(ctx);
-}
-
-write_log :: proc(text: string) {
-	// TODO(oskar)
 }
 
 test_window :: proc(ctx: ^mu.Context) {
@@ -290,48 +287,57 @@ test_window :: proc(ctx: ^mu.Context) {
 	return;
 }
 
-/*
-static void log_window(mu_Context *ctx) {
-  static mu_Container window;
+@static logbuf: strings.Builder;
+@static logbuf_updated: bool;
 
-  /* init window manually so we can set its position and size */
-  if (!window.inited) {
-	mu_init_window(ctx, &window, 0);
-	window.rect = mu_rect(350, 40, 300, 200);
-  }
-
-  if (mu_begin_window(ctx, &window, "Log Window")) {
-
-	/* output text panel */
-	static mu_Container panel;
-	mu_layout_row(ctx, 1, (int[]) { -1 }, -28);
-	mu_begin_panel(ctx, &panel);
-	mu_layout_row(ctx, 1, (int[]) { -1 }, -1);
-	mu_text(ctx, logbuf);
-	mu_end_panel(ctx);
-	if (logbuf_updated) {
-	  panel.scroll.y = panel.content_size.y;
-	  logbuf_updated = 0;
-	}
-
-	/* input textbox + submit button */
-	static char buf[128];
-	int submitted = 0;
-	mu_layout_row(ctx, 2, (int[]) { -70, -1 }, 0);
-	if (mu_textbox(ctx, buf, sizeof(buf)) & MU_RES_SUBMIT) {
-	  mu_set_focus(ctx, ctx->last_id);
-	  submitted = 1;
-	}
-	if (mu_button(ctx, "Submit")) { submitted = 1; }
-	if (submitted) {
-	  write_log(buf);
-	  buf[0] = '\0';
-	}
-
-	mu_end_window(ctx);
-  }
+@private write_log :: proc(text: string) {
+	strings.write_string(&logbuf, text);
+	strings.write_string(&logbuf, "\n");
+	logbuf_updated = true;
 }
-*/
+
+@private log_window :: proc(ctx: ^mu.Context) {
+	using mu;
+	@static window: Container;
+
+	/* init window manually so we can set its position and size */
+	if !window.inited {
+		init_window(ctx, &window);
+		window.rect = Rect{350, 40, 300, 200};
+	}
+
+	if begin_window(ctx, &window, "Log Window") {
+		/* output text panel */
+		@static panel: Container;
+		layout_row(ctx, 1, { -1 }, -28);
+		begin_panel(ctx, &panel);
+		layout_row(ctx, 1, { -1 }, -1);
+		text(ctx, strings.to_string(logbuf));
+		end_panel(ctx);
+		if logbuf_updated {
+			panel.scroll.y = panel.content_size.y;
+			logbuf_updated = false;
+		}
+
+		/* input textbox + submit button */
+		@static textlen: int;
+		@static textbuf: [128] byte;
+		submitted := false;
+		layout_row(ctx, 2, { -70, -1 }, 0);
+		if .SUBMIT in textbox(ctx, textbuf[:], &textlen) {
+			set_focus(ctx, ctx.last_id);
+			submitted = true;
+		}
+		if button(ctx, "Submit") != {} do submitted = true;
+		if submitted {
+			textstr := string(textbuf[:textlen]);
+			write_log(textstr);
+			textlen = 0;
+		}
+
+		end_window(ctx);
+	}
+}
 
 @private style_window :: proc(ctx: ^mu.Context) {
 	using mu;
