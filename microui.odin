@@ -1,6 +1,6 @@
 /*
-** Copyright (c) 2019 rxi
-** Copyright (c) 2020 oskarnp
+** Original work: Copyright (c) 2020 rxi
+** Modified work: Copyright (c) 2020 oskarnp
 **
 ** Permission is hereby granted, free of charge, to any person obtaining a copy
 ** of this software and associated documentation files (the "Software"), to
