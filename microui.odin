@@ -322,7 +322,7 @@ end :: proc(ctx: ^Context) {
 	if mouse_pressed(ctx) && ctx.next_hover_root != nil &&
 	   ctx.next_hover_root.zindex < ctx.last_zindex &&
 	   ctx.next_hover_root.zindex >= 0 {
-		bring_to_front(ctx, ctx.hover_root);
+		bring_to_front(ctx, ctx.next_hover_root);
 	}
 
 	/* reset input state */
@@ -459,7 +459,7 @@ get_current_container :: proc(ctx: ^Context) -> ^Container {
 	/* container not found in pool: init new container */
 	idx = pool_init(ctx, ctx.container_pool[:], id);
 	cnt := &ctx.containers[idx];
-	cnt = {}; // clear memory
+	cnt^ = {}; // clear memory
 	cnt.open = true;
 	bring_to_front(ctx, cnt);
 	return cnt;
@@ -698,7 +698,7 @@ layout_next :: proc(ctx: ^Context) -> (res: Rect) {
 		res.y = layout.position.y;
 
 		/* size */
-		res.w = layout.items > -1 ? layout.widths[layout.item_index] : layout.size.x;
+		res.w = layout.items > 0 ? layout.widths[layout.item_index] : layout.size.x;
 		res.h = layout.size.y;
 		if res.w == 0 do res.w = style.size.x + style.padding * 2;
 		if res.h == 0 do res.h = style.size.y + style.padding * 2;
@@ -829,7 +829,7 @@ button :: proc(ctx: ^Context, label: string, icon: Icon = .NONE, opt: Opt_Bits =
 	r := layout_next(ctx);
 	update_control(ctx, id, r, opt);
 	/* handle click */
-	if .LEFT in ctx.mouse_pressed_bits && ctx.focus_id == id {
+	if ctx.mouse_pressed_bits == {.LEFT} && ctx.focus_id == id {
 		res |= {.SUBMIT};
 	}
 	/* draw */
@@ -1118,7 +1118,8 @@ end_treenode :: proc(ctx: ^Context) {
 	cnt.head = push_jump(ctx, nil);
 	/* set as hover root if the mouse is overlapping this container and it has a
 	** higher zindex than the current hover root */
-	if rect_overlaps_vec2(cnt.rect, ctx.mouse_pos) && (ctx.next_hover_root == nil || cnt.zindex > ctx.next_hover_root.zindex) {
+	if rect_overlaps_vec2(cnt.rect, ctx.mouse_pos) &&
+	   (ctx.next_hover_root == nil || cnt.zindex > ctx.next_hover_root.zindex) {
 		ctx.next_hover_root = cnt;
 	}
 	/* clipping is reset here in case a root-container is made within

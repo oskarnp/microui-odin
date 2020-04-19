@@ -162,7 +162,11 @@ test_window :: proc(ctx: ^mu.Context) {
 	button :: inline proc(ctx: ^mu.Context, label: string) -> bool do return mu.button(ctx, label) == {.SUBMIT};
 
 	/* do window */
-	if mu.begin_window(ctx, fmt.tprintf("Demo Window: FPS %v MSPF %v", frame_stats.fps, frame_stats.mspf), {40,40,300,450}, opts) {
+	if mu.begin_window(ctx, "Demo Window", {40,40,300,450}, opts) {
+		if mu.header(ctx, "Frame Stats") != {} {
+			mu.layout_row(ctx, 1, []i32{-1}, 0);
+			mu.text(ctx, fmt.tprintf("FPS %v MSPF %v", frame_stats.fps, frame_stats.mspf));
+		}
 
 		if mu.header(ctx, "Window Options") != {} {
 			win := mu.get_current_container(ctx);
