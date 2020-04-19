@@ -156,31 +156,24 @@ process_frame :: proc(ctx: ^mu.Context) {
 }
 
 test_window :: proc(ctx: ^mu.Context) {
-	@static window: mu.Container;
 	@static opts: mu.Opt_Bits;
 
 	// NOTE(oskar): mu.button() returns Res_Bits and not bool (should fix this)
 	button :: inline proc(ctx: ^mu.Context, label: string) -> bool do return mu.button(ctx, label) == {.SUBMIT};
 
-	/* init window manually so we can set its position and size */
-	if !window.inited {
-		mu.init_window(ctx, &window);
-		window.rect = mu.Rect{40, 40, 500, 450};
-	}
-
-	/* limit window to minimum size */
-	window.rect.w = max(window.rect.w, 240);
-	window.rect.h = max(window.rect.h, 300);
-
 	/* do window */
-	if mu.begin_window(ctx, &window, fmt.tprintf("Demo Window: FPS %v MSPF %v", frame_stats.fps, frame_stats.mspf), opts) {
+	if mu.begin_window(ctx, "Demo Window", {40,40,300,450}, opts) {
+		if mu.header(ctx, "Frame Stats") != {} {
+			mu.layout_row(ctx, 1, []i32{-1}, 0);
+			mu.text(ctx, fmt.tprintf("FPS %v MSPF %v", frame_stats.fps, frame_stats.mspf));
+		}
 
-		@static show_options := true;
-		if mu.header(ctx, &show_options, "Window Options") != {} {
+		if mu.header(ctx, "Window Options") != {} {
+			win := mu.get_current_container(ctx);
 			mu.layout_row(ctx, 3, []i32{120, 120, 120}, 0);
 			for opt in mu.Opt {
 				state: bool = opt in opts;
-				if mu.checkbox(ctx, &state, fmt.tprintf("%v", opt)) != {} {
+				if mu.checkbox(ctx, fmt.tprintf("%v", opt), &state) != {} {
 					if state {
 						opts |= {opt};
 					}
@@ -192,18 +185,17 @@ test_window :: proc(ctx: ^mu.Context) {
 		}
 
 		/* window info */
-		@static show_info := false;
-		if mu.header(ctx, &show_info, "Window Info") != {} {
+		if mu.header(ctx, "Window Info") != {} {
+			win := mu.get_current_container(ctx);
 			mu.layout_row(ctx, 2, []i32{ 54, -1 }, 0);
 			mu.label(ctx, "Position:");
-			mu.label(ctx, fmt.tprintf("%d, %d", window.rect.x, window.rect.y));
+			mu.label(ctx, fmt.tprintf("%d, %d", win.rect.x, win.rect.y));
 			mu.label(ctx, "Size:");
-			mu.label(ctx, fmt.tprintf("%d, %d", window.rect.w, window.rect.h));
+			mu.label(ctx, fmt.tprintf("%d, %d", win.rect.w, win.rect.h));
 		}
 
 		/* labels + buttons */
-		@static show_buttons := true;
-		if mu.header(ctx, &show_buttons, "Test Buttons") != {} {
+		if mu.header(ctx, "Test Buttons", {.EXPANDED}) != {} {
 			mu.layout_row(ctx, 3, []i32{ 86, -110, -1 }, 0);
 			mu.label(ctx, "Test buttons 1:");
 			if button(ctx, "Button 1") do write_log("Pressed button 1");
@@ -214,25 +206,23 @@ test_window :: proc(ctx: ^mu.Context) {
 		}
 
 		/* tree */
-		@static show_tree := true;
-		if mu.header(ctx, &show_tree, "Tree and Text") != {} {
+		if mu.header(ctx, "Tree and Text", {.EXPANDED}) != {} {
 			mu.layout_row(ctx, 2, []i32{ 140, -1 }, 0);
 			mu.layout_begin_column(ctx);
-			@static states: [8]bool;
-			if mu.begin_treenode(ctx, &states[0], "Test 1") != {} {
-				if mu.begin_treenode(ctx, &states[1], "Test 1a") != {} {
+			if mu.begin_treenode(ctx, "Test 1") != {} {
+				if mu.begin_treenode(ctx, "Test 1a") != {} {
 					mu.label(ctx, "Hello");
 					mu.label(ctx, "world");
 					mu.end_treenode(ctx);
 				}
-				if mu.begin_treenode(ctx, &states[2], "Test 1b") != {} {
+				if mu.begin_treenode(ctx, "Test 1b") != {} {
 					if button(ctx, "Button 1") do write_log("Pressed button 1");
 					if button(ctx, "Button 2") do write_log("Pressed button 2");
 					mu.end_treenode(ctx);
 				}
 				mu.end_treenode(ctx);
 			}
-			if mu.begin_treenode(ctx, &states[3], "Test 2") != {} {
+			if mu.begin_treenode(ctx, "Test 2") != {} {
 				mu.layout_row(ctx, 2, []i32{ 54, 54 }, 0);
 				if button(ctx, "Button 3") do write_log("Pressed button 3");
 				if button(ctx, "Button 4") do write_log("Pressed button 4");
@@ -240,11 +230,11 @@ test_window :: proc(ctx: ^mu.Context) {
 				if button(ctx, "Button 6") do write_log("Pressed button 6");
 				mu.end_treenode(ctx);
 			}
-			if mu.begin_treenode(ctx, &states[4], "Test 3") != {} {
+			if mu.begin_treenode(ctx, "Test 3") != {} {
 				@static checks := [3]bool{ true, false, true };
-				mu.checkbox(ctx, &checks[0], "Checkbox 1");
-				mu.checkbox(ctx, &checks[1], "Checkbox 2");
-				mu.checkbox(ctx, &checks[2], "Checkbox 3");
+				mu.checkbox(ctx, "Checkbox 1", &checks[0]);
+				mu.checkbox(ctx, "Checkbox 2", &checks[1]);
+				mu.checkbox(ctx, "Checkbox 3", &checks[2]);
 				mu.end_treenode(ctx);
 			}
 			mu.layout_end_column(ctx);
@@ -256,8 +246,7 @@ test_window :: proc(ctx: ^mu.Context) {
 		}
 
 		/* background color sliders */
-		@static show_sliders := true;
-		if mu.header(ctx, &show_sliders, "Background Color") != {} {
+		if mu.header(ctx, "Background Color", {.EXPANDED}) != {} {
 			mu.layout_row(ctx, 2, []i32{ -78, -1 }, 74);
 			/* sliders */
 			mu.layout_begin_column(ctx);
@@ -298,19 +287,12 @@ test_window :: proc(ctx: ^mu.Context) {
 
 @private log_window :: proc(ctx: ^mu.Context) {
 	using mu;
-	@static window: Container;
 
-	/* init window manually so we can set its position and size */
-	if !window.inited {
-		init_window(ctx, &window);
-		window.rect = Rect{350, 40, 300, 200};
-	}
-
-	if begin_window(ctx, &window, "Log Window") {
+	if begin_window(ctx, "Log Window", Rect{350,40,300,200}) {
 		/* output text panel */
-		@static panel: Container;
 		layout_row(ctx, 1, { -1 }, -28);
-		begin_panel(ctx, &panel);
+		begin_panel(ctx, "Log Output");
+		panel := get_current_container(ctx);
 		layout_row(ctx, 1, { -1 }, -1);
 		text(ctx, strings.to_string(logbuf));
 		end_panel(ctx);
@@ -341,16 +323,9 @@ test_window :: proc(ctx: ^mu.Context) {
 
 @private style_window :: proc(ctx: ^mu.Context) {
 	using mu;
-	@static window: Container;
 
-	/* init window manually so we can set its position and size */
-	if !window.inited {
-		init_window(ctx, &window, {});
-		window.rect = Rect{350, 250, 300, 240};
-	}
-
-	if begin_window(ctx, &window, "Style Editor") {
-		sw := i32(Real(get_container(ctx).body.w) * 0.14);
+	if begin_window(ctx, "Style Editor", Rect{350,250,300,240}) {
+		sw := i32(Real(get_current_container(ctx).body.w) * 0.14);
 		layout_row(ctx, 6, { 80, sw, sw, sw, sw, -1 }, 0);
 		for c in Color_Type {
 			label(ctx, fmt.tprintf("%s:", reflect.enum_string(c)));
