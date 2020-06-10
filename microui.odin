@@ -376,7 +376,7 @@ HASH_INITIAL :: 2166136261;
 }
 
 get_id        :: proc{get_id_string, get_id_any, get_id_bytes, get_id_rawptr};
-get_id_any    :: inline proc(ctx: ^Context, val: any)                -> Id do return get_id_bytes(ctx, reflect.to_bytes(val));
+get_id_any    :: inline proc(ctx: ^Context, val: any)                -> Id do return get_id_bytes(ctx, reflect.as_bytes(val));
 get_id_string :: inline proc(ctx: ^Context, str: string)             -> Id do return get_id_bytes(ctx, transmute([]byte) str);
 get_id_rawptr :: inline proc(ctx: ^Context, data: rawptr, size: int) -> Id do return get_id_bytes(ctx, mem.slice_ptr(cast(^u8)data, size));
 get_id_bytes  :: proc(ctx: ^Context, bytes: []byte) -> Id {
@@ -388,7 +388,7 @@ get_id_bytes  :: proc(ctx: ^Context, bytes: []byte) -> Id {
 }
 
 push_id        :: proc{push_id_any, push_id_rawptr, push_id_bytes, push_id_string};
-push_id_any    :: inline proc(ctx: ^Context, val: any)                do push(&ctx.id_stack, get_id(ctx, reflect.to_bytes(val)));
+push_id_any    :: inline proc(ctx: ^Context, val: any)                do push(&ctx.id_stack, get_id(ctx, reflect.as_bytes(val)));
 push_id_string :: inline proc(ctx: ^Context, str: string)             do push(&ctx.id_stack, get_id(ctx, str));
 push_id_rawptr :: inline proc(ctx: ^Context, data: rawptr, size: int) do push(&ctx.id_stack, get_id(ctx, data, size));
 push_id_bytes  :: inline proc(ctx: ^Context, bytes: []byte)           do push(&ctx.id_stack, get_id(ctx, bytes));
