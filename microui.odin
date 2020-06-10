@@ -913,7 +913,7 @@ textbox_raw :: proc(ctx: ^Context, textbuf: []u8, textlen: ^int, id: Id, r: Rect
 @private parse_real :: inline proc(s: string) -> (Real, bool) {
 	     when Real == f32 do return strconv.parse_f32(s);
 	else when Real == f64 do return strconv.parse_f64(s);
-	unreachable();
+	//unreachable();
 	return 0, false;
 }
 
