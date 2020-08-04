@@ -26,9 +26,6 @@ A tiny, portable, immediate-mode UI library written in Odin. (Ported from [rxi/m
 ## Notes
 * The library expects the user to provide input and handle the resultant
   drawing commands, it does not do any drawing itself
-* In contrast to other immediate mode ui libraries microui does not store
-  window, panel, header or treenode state internally. It is up to the
-  user to manage this data themselves
 
 ## License
 This library is free software; you can redistribute it and/or modify it
