@@ -412,9 +412,9 @@ get_clip_rect :: proc(ctx: ^Context) -> Rect {
 check_clip :: proc(ctx: ^Context, r: Rect) -> Clip {
 	cr := get_clip_rect(ctx);
 	if r.x > cr.x + cr.w || r.x + r.w < cr.x ||
-	   r.y > cr.y + cr.h || r.y + r.h < cr.y do return .ALL;
+	   r.y > cr.y + cr.h || r.y + r.h < cr.y { return .ALL; }
 	if r.x >= cr.x && r.x + r.w <= cr.x + cr.w &&
-	   r.y >= cr.y && r.y + r.h <= cr.y + cr.h do return .NONE;
+	   r.y >= cr.y && r.y + r.h <= cr.y + cr.h { return .NONE; }
 	return .PART;
 }
 
