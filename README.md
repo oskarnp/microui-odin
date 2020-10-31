@@ -17,7 +17,7 @@ A tiny, portable, immediate-mode UI library written in Odin. (Ported from [rxi/m
 * Simple layout system
 
 ## Usage
-* See the [`demo`](demo) directory for a usage example
+* See the [`demo-sdl`](demo-sdl) directory for a usage example (using SDL2)
 
 ## Notes
 * The library expects the user to provide input and handle the resultant
