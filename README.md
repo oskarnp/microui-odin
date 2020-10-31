@@ -1,8 +1,5 @@
 # microui-odin
 
-## Work in progress
-* See [`TODO.md`](TODO.md) for current status.
-
 ## Description
 A tiny, portable, immediate-mode UI library written in Odin. (Ported from [rxi/microui](https://github.com/rxi/microui).)
 
@@ -11,7 +8,7 @@ A tiny, portable, immediate-mode UI library written in Odin. (Ported from [rxi/m
 [**Browser Demo**](https://floooh.github.io/sokol-html5/sgl-microui-sapp.html) (rxi's microui)
 
 ## Features
-* Tiny: around `TBD sloc` of ~~ANSI C~~ Odin
+* Tiny: around `1200 sloc` of Odin
 * Works within a fixed-sized memory region: no additional memory is
   allocated
 * Built-in controls: window, panel, button, slider, textbox, label,
@@ -20,7 +17,6 @@ A tiny, portable, immediate-mode UI library written in Odin. (Ported from [rxi/m
 * Simple layout system
 
 ## Usage
-* See [`doc/usage.md`](doc/usage.md) for usage instructions
 * See the [`demo`](demo) directory for a usage example
 
 ## Notes
