@@ -1,6 +1,6 @@
 package microui_demo
 
-import sdl "./odin-sdl2"
+import "sdl"
 import mu  "../"
 
 import "core:mem"

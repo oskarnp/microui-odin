@@ -1,3 +1,0 @@
-[submodule "demo/odin-sdl2"]
-	path = demo-sdl2/odin-sdl2
-	url = https://github.com/oskarnp/odin-sdl2.git
