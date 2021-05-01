@@ -24,8 +24,9 @@ odin run .
 ```
 
 ## Notes
+* This library assumes you are using the latest nightly build or GitHub master of the Odin compiler. Since Odin is still under development this means this library might break in the future. Please create an issue or PR if that happens. Last verified against: odin version dev-2021-05:0e972296
 * The library expects the user to provide input and handle the resultant
-  drawing commands, it does not do any drawing itself
+  drawing commands, it does not do any drawing itself.
 
 ## License
 This library is free software; you can redistribute it and/or modify it
