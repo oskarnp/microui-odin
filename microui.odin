@@ -47,7 +47,7 @@ MAX_FMT              :: 127;
 Clip :: enum {
 	NONE,
 	PART,
-	ALL
+	ALL,
 }
 
 Command_Type :: enum i32 {
@@ -55,7 +55,7 @@ Command_Type :: enum i32 {
 	CLIP,
 	RECT,
 	TEXT,
-	ICON
+	ICON,
 }
 
 Color_Type :: enum {
@@ -72,7 +72,7 @@ Color_Type :: enum {
 	BASEHOVER = BASE+1,
 	BASEFOCUS = BASE+2,
 	SCROLLBASE,
-	SCROLLTHUMB
+	SCROLLTHUMB,
 }
 
 Icon :: enum i32 {
@@ -81,7 +81,7 @@ Icon :: enum i32 {
 	CHECK,
 	COLLAPSED,
 	EXPANDED,
-	RESIZE
+	RESIZE,
 }
 
 Res :: enum {
@@ -104,7 +104,7 @@ Opt :: enum {
 	AUTOSIZE,
 	POPUP,
 	CLOSED,
-	EXPANDED
+	EXPANDED,
 }
 Opt_Bits :: bit_set[Opt];
 
@@ -252,7 +252,7 @@ pop  :: #force_inline proc(stk: ^$T/Stack($V,$N))         { expect(stk.idx > 0);
 		.BASEFOCUS   = {40,  40,  40,  255},
 		.SCROLLBASE  = {43,  43,  43,  255},
 		.SCROLLTHUMB = {30,  30,  30,  255},
-	}
+	},
 };
 
 @private expand_rect :: proc(rect: Rect, n: i32) -> Rect {

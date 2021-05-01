@@ -516,7 +516,7 @@ Init_Flags :: enum u32 {
 	GameController = 0x00002000,
 	Events = 0x00004000,
 	NoParachute = 0x00100000,
-	Everything = Timer | Audio | Video | Events | Joystick | Haptic | GameController
+	Everything = Timer | Audio | Video | Events | Joystick | Haptic | GameController,
 }
 
 Window_Flags :: enum u32 {
@@ -540,32 +540,32 @@ Window_Flags :: enum u32 {
 	Utility = 0x00020000,
 	Tooltip = 0x00040000,
 	Popup_Menu = 0x00080000,
-	Vulkan = 0x00100000
+	Vulkan = 0x00100000,
 }
 
 Window_Pos :: enum i32 {
 	Undefined = 0x1FFF0000,
-	Centered = 0x2FFF0000
+	Centered = 0x2FFF0000,
 }
 
 Renderer_Flags :: enum u32 {
 	Software = 0x00000001,
 	Accelerated = 0x00000002,
 	Present_VSync = 0x00000004,
-	Target_Texture = 0x00000008
+	Target_Texture = 0x00000008,
 }
 
 Texture_Access :: enum i32 {
     Static = 0,
     Streaming,
-    Target
+    Target,
 }
 
 Blend_Mode :: enum i32 {
 	None = 0x00000000,
 	Blend = 0x00000001,
 	Add = 0x00000002,
-	Mod = 0x00000004
+	Mod = 0x00000004,
 }
 
 Error_Code :: enum i32 {
@@ -574,7 +574,7 @@ Error_Code :: enum i32 {
 	FWrite,
 	FSeek,
 	Unsupported,
-	Last_Error
+	Last_Error,
 }
 
 Joystick_Power_Level :: enum i32 {
@@ -584,19 +584,19 @@ Joystick_Power_Level :: enum i32 {
 	Medium,
 	Full,
 	Wired,
-	Max
+	Max,
 }
 
 Hint_Priority :: enum i32 {
 	Default,
 	Normal,
-	Override
+	Override,
 }
 
 Thread_Priority :: enum i32 {
 	Low,
 	Normal,
-	High
+	High,
 }
 
 Assert_State :: enum i32 {
@@ -604,13 +604,13 @@ Assert_State :: enum i32 {
 	Break,
 	Abort,
 	Ignore,
-	Always_Ignore
+	Always_Ignore,
 }
 
 Event_Action :: enum i32 {
 	Add_Event,
 	Peek_Event,
-	Get_Event
+	Get_Event,
 }
 
 Hit_Test_Result :: enum i32 {
@@ -623,19 +623,19 @@ Hit_Test_Result :: enum i32 {
 	Resize_Bottom_Right,
 	Resize_Bottom,
 	Resize_Bottom_Left,
-	Resize_Left
+	Resize_Left,
 }
 
 Bool :: enum i32 {
 	False,
-	True
+	True,
 }
 
 Window_Shape_Modes :: enum i32 {
 	Default,
 	Binarize_Alpha,
 	Reverse_Binarize_Alpha,
-	Color_Key
+	Color_Key,
 }
 
 Keymod :: enum i32 {
@@ -651,13 +651,13 @@ Keymod :: enum i32 {
 	Num = 0x1000,
 	Caps = 0x2000,
 	Mode = 0x4000,
-	Reserved = 0x8000
+	Reserved = 0x8000,
 }
 
 Renderer_Flip :: enum i32 {
 	None = 0x00000000,
 	Horizontal = 0x00000001,
-	Vertical = 0x00000002
+	Vertical = 0x00000002,
 }
 
 GL_Attr :: enum i32 {
@@ -685,20 +685,20 @@ GL_Attr :: enum i32 {
 	Context_Profile_Mask,
 	Share_With_Current_Context,
 	Framebuffer_SRGB_Capable,
-	Context_Release_Behavior
+	Context_Release_Behavior,
 }
 
 GL_Context_Flag :: enum i32 {
 	Debug              = 0x0001,
 	Forward_Compatible = 0x0002,
 	Robust_Access      = 0x0004,
-	Reset_Isolation    = 0x0008
+	Reset_Isolation    = 0x0008,
 }
 
 GL_Context_Profile :: enum i32 {
 	Core           = 0x0001,
 	Compatibility  = 0x0002,
-	ES             = 0x0004
+	ES             = 0x0004,
 }
 
 Message_Box_Color_Type :: enum i32 {
@@ -707,13 +707,13 @@ Message_Box_Color_Type :: enum i32 {
 	Button_Border,
 	Button_Background,
 	Button_Selected,
-	Max
+	Max,
 }
 
 Audio_Status :: enum i32 {
 	Stopped = 0,
 	Playing,
-	Paused
+	Paused,
 }
 
 Power_State :: enum i32 {
@@ -721,7 +721,7 @@ Power_State :: enum i32 {
 	On_Battery,
 	No_Battery,
 	Charging,
-	Charged
+	Charged,
 }
 
 Log_Category :: enum i32 {
@@ -735,7 +735,7 @@ Log_Category :: enum i32 {
     Input,
     Test,
 
-    Custom = 19
+    Custom = 19,
 }
 
 Log_Priority :: enum i32 {
@@ -745,7 +745,7 @@ Log_Priority :: enum i32 {
 	Warn,
 	Error,
 	Critical,
-	Num_Log_Priorities
+	Num_Log_Priorities,
 }
 
 // Input stuff
@@ -768,7 +768,7 @@ Game_Controller_Button :: enum i32 {
 	DPad_Down,
 	DPad_Left,
 	DPad_Right,
-	Max
+	Max,
 }
 
 Game_Controller_Axis :: enum i32 {
@@ -779,14 +779,14 @@ Game_Controller_Axis :: enum i32 {
 	RightY,
 	Trigger_Left,
 	Trigger_Right,
-	Max
+	Max,
 }
 
 Game_Controller_Bind_Type :: enum i32 {
 	None = 0,
 	Button,
 	Axis,
-	Hat
+	Hat,
 }
 
 System_Cursor :: enum i32 {
@@ -802,7 +802,7 @@ System_Cursor :: enum i32 {
 	Size_All,
 	No,
 	Hand,
-	Num_System_Cursors
+	Num_System_Cursors,
 }
 
 
@@ -1067,7 +1067,7 @@ Scancode :: enum i32 {
 	App1 = 283,
 	App2 = 284,
 
-	Num_Scancodes = 512
+	Num_Scancodes = 512,
 }
 
 SDLK_UNKNOWN :: 0;
@@ -1327,7 +1327,7 @@ Mousecode :: enum i32 {
 	Middle = 1 << 1,
 	Right  = 1 << 2,
 	X1 	   = 1 << 3,
-	X2 	   = 1 << 4
+	X2 	   = 1 << 4,
 }
 
 
@@ -1340,7 +1340,7 @@ Hat :: enum i32 {
 	Right_Up = Right | Up,
 	Right_Down = Right | Down,
 	Left_Up = Left | Up,
-	Left_Down = Left | Down
+	Left_Down = Left | Down,
 }
 
 Event_Type :: enum u32 {
@@ -1407,7 +1407,7 @@ Event_Type :: enum u32 {
 
 	User_Event = 0x8000,
 
-	Last_Event = 0xFFFF
+	Last_Event = 0xFFFF,
 }
 
 Window_Event_ID :: enum u8 {
@@ -1427,7 +1427,7 @@ Window_Event_ID :: enum u8 {
     Focus_Lost,
     Close,
     Take_Focus,
-    Hit_Test
+    Hit_Test,
 }
 
 GL_Context :: rawptr;
