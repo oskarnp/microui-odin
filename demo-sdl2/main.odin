@@ -56,8 +56,8 @@ main :: proc() {
 	defer free(ctx);
 	mu.init(ctx);
 
-	text_width  :: inline proc(font: mu.Font, text: string) -> i32 do return r_get_text_width(text);
-	text_height :: inline proc(font: mu.Font) -> i32 do return r_get_text_height();
+	text_width  :: #force_inline proc(font: mu.Font, text: string) -> i32 do return r_get_text_width(text);
+	text_height :: #force_inline proc(font: mu.Font) -> i32 do return r_get_text_height();
 	ctx.text_width = text_width;
 	ctx.text_height = text_height;
 
@@ -73,7 +73,7 @@ main :: proc() {
 			case .Text_Input: mu.input_text(ctx, string(cstring(&e.text.text[0])));
 
 			case .Mouse_Button_Down, .Mouse_Button_Up:
-				button_map :: inline proc(button: u8) -> (res: mu.Mouse, ok: bool) {
+				button_map :: #force_inline proc(button: u8) -> (res: mu.Mouse, ok: bool) {
 					ok = true;
 					switch button {
 						case 1: res = .LEFT;
@@ -97,7 +97,7 @@ main :: proc() {
 					sdl.push_event(&quit_event);
 				}
 
-				key_map :: inline proc(x: i32) -> (res: mu.Key, ok: bool) {
+				key_map :: #force_inline proc(x: i32) -> (res: mu.Key, ok: bool) {
 					ok = true;
 					switch x {
 						case cast(i32)sdl.SDLK_LSHIFT:    res = .SHIFT;
@@ -159,7 +159,7 @@ test_window :: proc(ctx: ^mu.Context) {
 	@static opts: mu.Opt_Bits;
 
 	// NOTE(oskar): mu.button() returns Res_Bits and not bool (should fix this)
-	button :: inline proc(ctx: ^mu.Context, label: string) -> bool do return mu.button(ctx, label) == {.SUBMIT};
+	button :: #force_inline proc(ctx: ^mu.Context, label: string) -> bool do return mu.button(ctx, label) == {.SUBMIT};
 
 	/* do window */
 	if mu.begin_window(ctx, "Demo Window", {40,40,300,450}, opts) {

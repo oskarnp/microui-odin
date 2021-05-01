@@ -227,8 +227,8 @@ Stack :: struct(T: typeid, N: int) {
 	idx:   i32,
 	items: [N]T,
 }
-push :: inline proc(stk: ^$T/Stack($V,$N), val: V) { expect(stk.idx < len(stk.items)); stk.items[stk.idx] = val; stk.idx += 1; }
-pop  :: inline proc(stk: ^$T/Stack($V,$N))         { expect(stk.idx > 0); stk.idx -= 1; }
+push :: #force_inline proc(stk: ^$T/Stack($V,$N), val: V) { expect(stk.idx < len(stk.items)); stk.items[stk.idx] = val; stk.idx += 1; }
+pop  :: #force_inline proc(stk: ^$T/Stack($V,$N))         { expect(stk.idx > 0); stk.idx -= 1; }
 
 @static unclipped_rect := Rect{0, 0, 0x1000000, 0x1000000};
 
@@ -376,9 +376,9 @@ HASH_INITIAL :: 2166136261;
 }
 
 get_id        :: proc{get_id_string, get_id_any, get_id_bytes, get_id_rawptr};
-get_id_any    :: inline proc(ctx: ^Context, val: any)                -> Id do return get_id_bytes(ctx, reflect.as_bytes(val));
-get_id_string :: inline proc(ctx: ^Context, str: string)             -> Id do return get_id_bytes(ctx, transmute([]byte) str);
-get_id_rawptr :: inline proc(ctx: ^Context, data: rawptr, size: int) -> Id do return get_id_bytes(ctx, mem.slice_ptr(cast(^u8)data, size));
+get_id_any    :: #force_inline proc(ctx: ^Context, val: any)                -> Id do return get_id_bytes(ctx, reflect.as_bytes(val));
+get_id_string :: #force_inline proc(ctx: ^Context, str: string)             -> Id do return get_id_bytes(ctx, transmute([]byte) str);
+get_id_rawptr :: #force_inline proc(ctx: ^Context, data: rawptr, size: int) -> Id do return get_id_bytes(ctx, mem.slice_ptr(cast(^u8)data, size));
 get_id_bytes  :: proc(ctx: ^Context, bytes: []byte) -> Id {
 	idx := ctx.id_stack.idx;
 	res := ctx.id_stack.items[idx - 1] if idx > 0 else HASH_INITIAL;
@@ -388,10 +388,10 @@ get_id_bytes  :: proc(ctx: ^Context, bytes: []byte) -> Id {
 }
 
 push_id        :: proc{push_id_any, push_id_rawptr, push_id_bytes, push_id_string};
-push_id_any    :: inline proc(ctx: ^Context, val: any)                do push(&ctx.id_stack, get_id(ctx, reflect.as_bytes(val)));
-push_id_string :: inline proc(ctx: ^Context, str: string)             do push(&ctx.id_stack, get_id(ctx, str));
-push_id_rawptr :: inline proc(ctx: ^Context, data: rawptr, size: int) do push(&ctx.id_stack, get_id(ctx, data, size));
-push_id_bytes  :: inline proc(ctx: ^Context, bytes: []byte)           do push(&ctx.id_stack, get_id(ctx, bytes));
+push_id_any    :: #force_inline proc(ctx: ^Context, val: any)                do push(&ctx.id_stack, get_id(ctx, reflect.as_bytes(val)));
+push_id_string :: #force_inline proc(ctx: ^Context, str: string)             do push(&ctx.id_stack, get_id(ctx, str));
+push_id_rawptr :: #force_inline proc(ctx: ^Context, data: rawptr, size: int) do push(&ctx.id_stack, get_id(ctx, data, size));
+push_id_bytes  :: #force_inline proc(ctx: ^Context, bytes: []byte)           do push(&ctx.id_stack, get_id(ctx, bytes));
 
 pop_id :: proc(ctx: ^Context) do pop(&ctx.id_stack);
 
@@ -561,7 +561,7 @@ next_command :: proc(ctx: ^Context, pcmd: ^^Command) -> bool {
 	defer pcmd^ = cmd;
 	if cmd != nil do cmd = cast(^Command) (uintptr(cmd) + uintptr(cmd.base.size));
 	else          do cmd = cast(^Command) &ctx.command_list.items[0];
-	invalid_command :: inline proc(ctx: ^Context) -> ^Command do return cast(^Command) &ctx.command_list.items[ctx.command_list.idx];
+	invalid_command :: #force_inline proc(ctx: ^Context) -> ^Command do return cast(^Command) &ctx.command_list.items[ctx.command_list.idx];
 	for cmd != invalid_command(ctx) {
 		if cmd.type != .JUMP do return true;
 		cmd = cast(^Command) cmd.jump.dst;
@@ -910,7 +910,7 @@ textbox_raw :: proc(ctx: ^Context, textbuf: []u8, textlen: ^int, id: Id, r: Rect
 	return;
 }
 
-@private parse_real :: inline proc(s: string) -> (Real, bool) {
+@private parse_real :: #force_inline proc(s: string) -> (Real, bool) {
 	     when Real == f32 do return strconv.parse_f32(s);
 	else when Real == f64 do return strconv.parse_f64(s);
 	//unreachable();
@@ -1261,6 +1261,6 @@ end_panel :: proc(ctx: ^Context) {
 	pop_container(ctx);
 }
 
-@private mouse_released :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_released_bits) != 0;
-@private mouse_pressed  :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_pressed_bits) != 0;
-@private mouse_down     :: inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_down_bits) != 0;
+@private mouse_released :: #force_inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_released_bits) != 0;
+@private mouse_pressed  :: #force_inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_pressed_bits) != 0;
+@private mouse_down     :: #force_inline proc(ctx: ^Context) -> bool do return card(ctx.mouse_down_bits) != 0;

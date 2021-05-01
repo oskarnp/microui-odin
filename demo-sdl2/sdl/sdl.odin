@@ -1686,10 +1686,10 @@ Packed_Layout :: enum u32 {
 }
 
 pixel_format_enum_to_u32 :: proc(e: Pixel_Format_Enum) -> u32 {
-	_pack_fourcc :: inline proc (a, b, c, d: u8) -> u32 {
+	_pack_fourcc :: #force_inline proc (a, b, c, d: u8) -> u32 {
 		return (u32(a) << 0) | (u32(b) << 8) | (u32(c) << 16) | (u32(d) << 24);
 	}
-	_pack_pixelformat :: inline proc(auto_cast type, order, layout, bits, bytes: u32) -> u32 {
+	_pack_pixelformat :: #force_inline proc(auto_cast type, order, layout, bits, bytes: u32) -> u32 {
 		return ((1 << 28) | (u32(type) << 24) | (order << 20) | (layout << 16) | (bits << 8) | (bytes << 0));
 	}
 	switch e {
