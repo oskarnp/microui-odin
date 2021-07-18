@@ -9,8 +9,8 @@ import "core:time"
 import "core:reflect"
 import "core:strings"
 
-@static bg: [3]u8 = { 90, 95, 100 };
-@static frame_stats: Frame_Stats;
+bg: [3]u8 = { 90, 95, 100 };
+frame_stats: Frame_Stats;
 
 Frame_Stats :: struct {
 	samples:      [100] time.Duration,
@@ -276,8 +276,8 @@ test_window :: proc(ctx: ^mu.Context) {
 	return;
 }
 
-@static logbuf: strings.Builder;
-@static logbuf_updated: bool;
+logbuf: strings.Builder;
+logbuf_updated: bool;
 
 @private write_log :: proc(text: string) {
 	strings.write_string(&logbuf, text);

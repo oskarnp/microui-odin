@@ -230,9 +230,9 @@ Stack :: struct(T: typeid, N: int) {
 push :: #force_inline proc(stk: ^$T/Stack($V,$N), val: V) { expect(stk.idx < len(stk.items)); stk.items[stk.idx] = val; stk.idx += 1; }
 pop  :: #force_inline proc(stk: ^$T/Stack($V,$N))         { expect(stk.idx > 0); stk.idx -= 1; }
 
-@static unclipped_rect := Rect{0, 0, 0x1000000, 0x1000000};
+unclipped_rect := Rect{0, 0, 0x1000000, 0x1000000};
 
-@static default_style := Style{
+default_style := Style{
 	font = nil, size = { 68, 10 },
 	padding = 5, spacing = 4, indent = 24,
 	title_height = 24, footer_height = 20,

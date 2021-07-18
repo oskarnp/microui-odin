@@ -12,7 +12,7 @@ ATLAS_ICON_EXPANDED  :: cast(int) mu.Icon.EXPANDED;
 ATLAS_ICON_COLLAPSED :: cast(int) mu.Icon.COLLAPSED;
 ATLAS_ICON_RESIZE    :: cast(int) mu.Icon.RESIZE;
 
-@static atlas_alpha := [ATLAS_WIDTH * ATLAS_HEIGHT]u8{
+atlas_alpha := [ATLAS_WIDTH * ATLAS_HEIGHT]u8{
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1383,7 +1383,7 @@ ATLAS_ICON_RESIZE    :: cast(int) mu.Icon.RESIZE;
   0x00, 0x00, 0x00, 0x00,
 };
 
-@static atlas := [?]mu.Rect{
+atlas := [?]mu.Rect{
   ATLAS_ICON_CLOSE     = { 88,  68, 16, 16 },
   ATLAS_ICON_CHECK     = { 0,   0,  18, 18 },
   ATLAS_ICON_EXPANDED  = { 118, 68, 7,  5 },
