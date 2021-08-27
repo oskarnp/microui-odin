@@ -12,6 +12,9 @@ import "core:strings"
 bg: [3]u8 = { 90, 95, 100 };
 frame_stats: Frame_Stats;
 
+logbuf: strings.Builder;
+logbuf_updated: bool;
+
 Frame_Stats :: struct {
 	samples:      [100] time.Duration,
 	sample_index: int,
@@ -41,6 +44,8 @@ update_frame_stats :: proc(using _: ^Frame_Stats) {
 
 main :: proc() {
 	context.logger = log.create_console_logger(ident = "demo");
+
+	logbuf = strings.make_builder();
 
 	/* init SDL and renderer */
 	if err := sdl.init(.Video); err != 0 {
@@ -276,8 +281,6 @@ test_window :: proc(ctx: ^mu.Context) {
 	return;
 }
 
-logbuf: strings.Builder;
-logbuf_updated: bool;
 
 @private write_log :: proc(text: string) {
 	strings.write_string(&logbuf, text);
