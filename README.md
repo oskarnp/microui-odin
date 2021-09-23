@@ -1,3 +1,11 @@
+# Now part of official Odin vendor collection! https://github.com/odin-lang/Odin/tree/master/vendor/microui
+
+As a result of being included in the official vendor collection, this repo will no longer be maintained. Any issues or PRs is expected on the official vendor library from now on.
+
+Old README follows below.
+
+---
+
 # microui-odin
 
 ## Description
